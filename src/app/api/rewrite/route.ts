@@ -1,7 +1,5 @@
 import OpenAI from "openai";
-
-const pdfParse =
-  require("pdf-parse");
+import pdfParse from "pdf-parse";
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -99,15 +97,16 @@ ${resumeText}
       rewrittenResume,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
 
     console.log(error);
 
     return Response.json({
 
       error:
-        error.message ||
-        "Rewrite failed",
+        error instanceof Error
+          ? error.message
+          : "Rewrite failed"
     });
   }
 }
