@@ -1,12 +1,9 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
 
-const nextConfig: NextConfig = {
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...(config.externals || []), "pdf-parse"];
-    }
-    return config;
-  },
+const nextConfig = {
+
+  turbopack: {},
+
 };
 
 export default nextConfig;
