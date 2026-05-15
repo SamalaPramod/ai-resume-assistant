@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // RESUME PDF PARSING
+    // RESUME PDF
     // =========================
 
     const resumeBytes =
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         .trim();
 
     // =========================
-    // JD PDF PARSING
+    // JOB DESCRIPTION PDF
     // =========================
 
     if (jdFile) {
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // CLEAN TEXT
+    // NORMALIZE TEXT
     // =========================
 
     const normalize = (
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       normalize(jobDescription);
 
     // =========================
-    // SKILL KEYWORDS
+    // KEYWORDS
     // =========================
 
     const keywordMap = [
@@ -201,6 +201,26 @@ export async function POST(req: Request) {
 
     const jobMatch =
       atsScore;
+
+    // =========================
+    // RESUME LEVEL
+    // =========================
+
+    let resumeLevel =
+      "Beginner";
+
+    if (atsScore >= 80) {
+
+      resumeLevel =
+        "Advanced";
+
+    } else if (
+      atsScore >= 60
+    ) {
+
+      resumeLevel =
+        "Intermediate";
+    }
 
     // =========================
     // STRENGTHS
@@ -341,7 +361,7 @@ ${jobDescription}
         .message.content || "";
 
     // =========================
-    // SAVE TO SUPABASE
+    // SAVE TO DATABASE
     // =========================
 
     await supabase
@@ -355,6 +375,9 @@ ${jobDescription}
 
         job_match:
           jobMatch,
+
+        resume_level:
+          resumeLevel,
 
         matched_keywords:
           matchedKeywords,
@@ -381,6 +404,8 @@ ${jobDescription}
       atsScore,
 
       jobMatch,
+
+      resumeLevel,
 
       matchedKeywords,
 

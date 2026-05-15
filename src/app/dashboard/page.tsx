@@ -19,6 +19,9 @@ export default function DashboardPage() {
   const [jobMatch, setJobMatch] =
     useState(0);
 
+  const [resumeLevel, setResumeLevel] =
+    useState("");
+
   const [aiFeedback, setAiFeedback] =
     useState("");
 
@@ -90,6 +93,10 @@ export default function DashboardPage() {
 
       setJobMatch(
         data.jobMatch || 0
+      );
+
+      setResumeLevel(
+        data.resumeLevel || ""
       );
 
       setAiFeedback(
@@ -338,7 +345,17 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-lg">
-              Job Match: {jobMatch}%
+              Job Match:
+              <span className="font-semibold ml-2">
+                {jobMatch}%
+              </span>
+            </p>
+
+            <p className="text-lg mt-2">
+              Resume Level:
+              <span className="font-semibold ml-2">
+                {resumeLevel}
+              </span>
             </p>
           </div>
 
@@ -348,7 +365,7 @@ export default function DashboardPage() {
               AI Suggestions
             </h2>
 
-            <div className="whitespace-pre-wrap text-gray-700">
+            <div className="whitespace-pre-wrap text-gray-700 leading-8">
               {aiFeedback}
             </div>
           </div>
@@ -446,7 +463,7 @@ export default function DashboardPage() {
             Interview Questions
           </h2>
 
-          <div className="whitespace-pre-wrap text-gray-700">
+          <div className="whitespace-pre-wrap text-gray-700 leading-8">
             {interviewQuestions}
           </div>
         </div>
@@ -459,7 +476,7 @@ export default function DashboardPage() {
             Rewritten Resume
           </h2>
 
-          <div className="whitespace-pre-wrap text-gray-700">
+          <div className="whitespace-pre-wrap text-gray-700 leading-8">
             {rewrittenResume}
           </div>
         </div>

@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         .trim();
 
     // =========================
-    // JD PDF
+    // JOB DESCRIPTION PDF
     // =========================
 
     if (jdFile) {
@@ -104,19 +104,17 @@ export async function POST(req: Request) {
 You are a senior technical interviewer.
 
 Generate:
-- Technical interview questions
-- HR questions
-- Project-based questions
-- Resume-based questions
-- Coding questions
+- 10 HR interview questions
+- 10 Technical interview questions
+- 10 Project-based questions
+- 10 Behavioral questions
+- 10 Coding questions
 
-based on the candidate resume and job description.
+based on the resume and job description.
 
-Rules:
-- Return at least 15 questions
-- Make questions realistic
-- Include frontend/backend/system design questions if relevant
-- Keep questions professional
+Also provide short answers.
+
+Format properly with headings.
 `,
           },
 
