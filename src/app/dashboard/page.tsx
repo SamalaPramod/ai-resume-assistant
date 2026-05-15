@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -7,325 +8,303 @@ export default function DashboardPage() {
   const [selectedFile, setSelectedFile] =
     useState<File | null>(null);
 
-  const [jdFile, setJdFile] =
-    useState<File | null>(null);
+  const [jobDescription, setJobDescription] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [atsScore, setAtsScore] =
     useState(0);
 
-  const [jobMatch, setJobMatch] =
+  const [analysis, setAnalysis] =
+    useState("");
+
+  const [jobMatchScore, setJobMatchScore] =
     useState(0);
 
-  const [aiFeedback, setAiFeedback] =
+  const [resumeLevel, setResumeLevel] =
     useState("");
 
-  const [interviewQuestions, setInterviewQuestions] =
-    useState("");
+  const [matchedKeywords, setMatchedKeywords] =
+    useState<string[]>([]);
 
-  const [rewrittenResume, setRewrittenResume] =
-    useState("");
+  const [missingKeywords, setMissingKeywords] =
+    useState<string[]>([]);
 
-  // =========================
-  // ANALYZE
-  // =========================
+  const [strengths, setStrengths] =
+    useState<string[]>([]);
 
-  const analyzeResume =
-    async () => {
+  const [weaknesses, setWeaknesses] =
+    useState<string[]>([]);
 
-      try {
+  const analyzeResume = async () => {
 
-        if (!selectedFile) {
+    try {
 
-          alert(
-            "Upload resume"
-          );
+      if (!selectedFile) {
 
-          return;
-        }
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "resume",
-          selectedFile
+        alert(
+          "Please upload a resume"
         );
 
-        if (jdFile) {
-
-          formData.append(
-            "jdFile",
-            jdFile
-          );
-        }
-
-        const response =
-          await fetch(
-            "/api/upload",
-            {
-
-              method: "POST",
-
-              body: formData,
-            }
-          );
-
-        const data =
-          await response.json();
-
-        setAtsScore(
-          data.atsScore || 0
-        );
-
-        setJobMatch(
-          data.jobMatch || 0
-        );
-
-        setAiFeedback(
-          data.aiFeedback || ""
-        );
-
-      } catch (error) {
-
-        console.log(error);
+        return;
       }
-    };
 
-  // =========================
-  // INTERVIEW
-  // =========================
+      setLoading(true);
 
-  const generateInterview =
-    async () => {
+      const formData =
+        new FormData();
 
-      try {
+      formData.append(
+        "resume",
+        selectedFile
+      );
 
-        if (!selectedFile) {
+      formData.append(
+        "jobDescription",
+        jobDescription
+      );
 
-          alert(
-            "Upload resume"
-          );
-
-          return;
-        }
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "resume",
-          selectedFile
+      const response =
+        await fetch(
+          "/api/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
         );
 
-        if (jdFile) {
+      const result =
+        await response.json();
 
-          formData.append(
-            "jdFile",
-            jdFile
-          );
-        }
+      if (result.error) {
 
-        const response =
-          await fetch(
-            "/api/interview",
-            {
-
-              method: "POST",
-
-              body: formData,
-            }
-          );
-
-        const data =
-          await response.json();
-
-        setInterviewQuestions(
-          data.interviewQuestions || ""
+        throw new Error(
+          result.error
         );
-
-      } catch (error) {
-
-        console.log(error);
       }
-    };
 
-  // =========================
-  // REWRITE
-  // =========================
+      setAtsScore(
+        result.atsScore || 0
+      );
 
-  const rewriteResume =
-    async () => {
+      setJobMatchScore(
+        result.jobMatchScore || 0
+      );
 
-      try {
+      setResumeLevel(
+        result.resumeLevel || ""
+      );
 
-        if (!selectedFile) {
+      setMatchedKeywords(
+        result.matchedKeywords || []
+      );
 
-          alert(
-            "Upload resume"
-          );
+      setMissingKeywords(
+        result.missingKeywords || []
+      );
 
-          return;
-        }
+      setStrengths(
+        result.strengths || []
+      );
 
-        const formData =
-          new FormData();
+      setWeaknesses(
+        result.weaknesses || []
+      );
 
-        formData.append(
-          "resume",
-          selectedFile
-        );
+      setAnalysis(
+        result.analysis || ""
+      );
 
-        const response =
-          await fetch(
-            "/api/rewrite",
-            {
+    } catch (error: any) {
 
-              method: "POST",
+      alert(
+        error.message ||
+        "Analysis failed"
+      );
 
-              body: formData,
-            }
-          );
+    } finally {
 
-        const data =
-          await response.json();
-
-        setRewrittenResume(
-          data.rewrittenResume || ""
-        );
-
-      } catch (error) {
-
-        console.log(error);
-      }
-    };
+      setLoading(false);
+    }
+  };
 
   return (
 
-    <div className="min-h-screen bg-[#020617] text-white p-8">
+    <div
+      style={{
+        padding: "40px",
+        background: "#0b1020",
+        minHeight: "100vh",
+        color: "white",
+      }}
+    >
 
-      <h1 className="text-5xl font-bold mb-10">
-        AI Resume Assistant
+      <h1
+        style={{
+          fontSize: "50px",
+          marginBottom: "30px",
+        }}
+      >
+        AI Resume Analyzer
       </h1>
 
-      {/* Upload Section */}
+      <input
+        type="file"
+        accept=".pdf"
+        onChange={(e) => {
 
-      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
+          if (
+            e.target.files &&
+            e.target.files[0]
+          ) {
 
-        <div className="grid md:grid-cols-2 gap-6">
+            setSelectedFile(
+              e.target.files[0]
+            );
+          }
+        }}
+      />
 
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) =>
-              setSelectedFile(
-                e.target.files?.[0] || null
-              )
-            }
-            className="bg-white text-black p-4 rounded-xl"
-          />
+      
 
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) =>
-              setJdFile(
-                e.target.files?.[0] || null
-              )
-            }
-            className="bg-white text-black p-4 rounded-xl"
-          />
-        </div>
+      
 
-        <div className="flex gap-6 mt-8">
 
-          <button
-            onClick={analyzeResume}
-            className="bg-cyan-500 hover:bg-cyan-600 px-8 py-4 rounded-2xl text-2xl font-semibold"
-          >
-            Analyze Resume
-          </button>
+      <textarea
+        placeholder="Paste Job Description"
+        value={jobDescription}
+        onChange={(e) =>
+          setJobDescription(
+            e.target.value
+          )
+        }
+        style={{
+          width: "100%",
+          height: "150px",
+          padding: "10px",
+          color: "black",
+        }}
+      />
 
-          <button
-            onClick={generateInterview}
-            className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-2xl text-2xl font-semibold"
-          >
-            Interview Prep
-          </button>
+      
 
-          <button
-            onClick={rewriteResume}
-            className="bg-orange-500 hover:bg-orange-600 px-8 py-4 rounded-2xl text-2xl font-semibold"
-          >
-            Rewrite Resume
-          </button>
-        </div>
-      </div>
+      
 
-      {/* Scores */}
 
-      <div className="grid md:grid-cols-2 gap-8 mb-8">
+      <button
+        onClick={analyzeResume}
+        style={{
+          padding: "15px 30px",
+          background: "#22d3ee",
+          border: "none",
+          borderRadius: "10px",
+          fontSize: "20px",
+          cursor: "pointer",
+        }}
+      >
+        {
+          loading
+            ? "Analyzing..."
+            : "Analyze Resume"
+        }
+      </button>
 
-        <div className="bg-[#0f172a] p-8 rounded-3xl">
+      
 
-          <h2 className="text-3xl mb-4">
-            ATS Score
-          </h2>
+      
 
-          <div className="text-7xl text-cyan-400 font-bold">
-            {atsScore}%
-          </div>
-        </div>
 
-        <div className="bg-[#0f172a] p-8 rounded-3xl">
+      <h2>
+        ATS Score: {atsScore}
+      </h2>
 
-          <h2 className="text-3xl mb-4">
-            Job Match
-          </h2>
+      <h2>
+        Job Match Score:
+        {" "}
+        {jobMatchScore}
+      </h2>
 
-          <div className="text-7xl text-green-400 font-bold">
-            {jobMatch}%
-          </div>
-        </div>
-      </div>
+      <h2>
+        Resume Level:
+        {" "}
+        {resumeLevel}
+      </h2>
 
-      {/* AI Suggestions */}
+      
 
-      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
 
-        <h2 className="text-3xl mb-6">
-          AI Suggestions
-        </h2>
+      <h2>
+        Matched Keywords
+      </h2>
 
-        <div className="whitespace-pre-wrap leading-8 text-gray-300">
-          {aiFeedback}
-        </div>
-      </div>
+      <ul>
+        {matchedKeywords.map(
+          (keyword, index) => (
 
-      {/* Interview Questions */}
+          <li key={index}>
+            {keyword}
+          </li>
+        ))}
+      </ul>
 
-      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
+      <h2>
+        Missing Keywords
+      </h2>
 
-        <h2 className="text-3xl mb-6">
-          Interview Questions
-        </h2>
+      <ul>
+        {missingKeywords.map(
+          (keyword, index) => (
 
-        <div className="whitespace-pre-wrap leading-8 text-gray-300">
-          {interviewQuestions}
-        </div>
-      </div>
+          <li key={index}>
+            {keyword}
+          </li>
+        ))}
+      </ul>
 
-      {/* Rewrite */}
+      <h2>
+        Strengths
+      </h2>
 
-      <div className="bg-[#0f172a] p-8 rounded-3xl">
+      <ul>
+        {strengths.map(
+          (item, index) => (
 
-        <h2 className="text-3xl mb-6">
-          Rewritten Resume
-        </h2>
+          <li key={index}>
+            {item}
+          </li>
+        ))}
+      </ul>
 
-        <div className="whitespace-pre-wrap leading-8 text-gray-300">
-          {rewrittenResume}
-        </div>
-      </div>
+      <h2>
+        Weaknesses
+      </h2>
+
+      <ul>
+        {weaknesses.map(
+          (item, index) => (
+
+          <li key={index}>
+            {item}
+          </li>
+        ))}
+      </ul>
+
+      <h2>
+        AI Suggestions
+      </h2>
+
+      <pre
+        style={{
+          whiteSpace:
+            "pre-wrap",
+          lineHeight: "1.7",
+        }}
+      >
+        {analysis}
+      </pre>
+
     </div>
   );
 }
