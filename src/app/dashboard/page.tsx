@@ -1,21 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-} from "docx";
-
-import { saveAs } from "file-saver";
+import { useState } from "react";
 
 export default function DashboardPage() {
 
@@ -23,209 +8,62 @@ export default function DashboardPage() {
   // STATES
   // =========================
 
-  const [file, setFile] =
+  const [resumeFile, setResumeFile] =
     useState<File | null>(null);
 
   const [jdFile, setJdFile] =
     useState<File | null>(null);
 
-  const [jobDescription, setJobDescription] =
-    useState("");
-
-  const [analyzing, setAnalyzing] =
+  const [loading, setLoading] =
     useState(false);
-
-  const [rewriting, setRewriting] =
-    useState(false);
-
-  const [
-    generatingQuestions,
-    setGeneratingQuestions,
-  ] = useState(false);
 
   const [atsScore, setAtsScore] =
     useState(0);
 
-  const [jobMatchScore, setJobMatchScore] =
+  const [jobMatch, setJobMatch] =
     useState(0);
 
   const [resumeLevel, setResumeLevel] =
+    useState("Beginner");
+
+  const [aiSuggestions, setAiSuggestions] =
     useState("");
 
-  const [analysis, setAnalysis] =
+  const [rewrittenResume, setRewrittenResume] =
     useState("");
 
-  const [
-    rewrittenResume,
-    setRewrittenResume,
-  ] = useState("");
+  const [interviewQuestions, setInterviewQuestions] =
+    useState("");
 
-  const [
-    interviewContent,
-    setInterviewContent,
-  ] = useState("");
-
-  const [
-    matchedKeywords,
-    setMatchedKeywords,
-  ] = useState<string[]>([]);
-
-  const [
-    missingKeywords,
-    setMissingKeywords,
-  ] = useState<string[]>([]);
-
-  const [strengths, setStrengths] =
-    useState<string[]>([]);
-
-  const [weaknesses, setWeaknesses] =
-    useState<string[]>([]);
-
-  const [history, setHistory] =
-    useState<any[]>([]);
-
-  const [
-    selectedHistory,
-    setSelectedHistory,
-  ] = useState<any>(null);
+  const [activeSection, setActiveSection] =
+    useState("suggestions");
 
   // =========================
-  // ACTIVE TAB
-  // =========================
-
-  const [
-    activeSection,
-    setActiveSection,
-  ] = useState("analysis");
-
-  // =========================
-  // FETCH HISTORY
-  // =========================
-
-  useEffect(() => {
-
-    fetchHistory();
-
-  }, []);
-
-  const fetchHistory = async () => {
-
-    try {
-
-      const response =
-        await fetch("/api/history");
-
-      const text =
-        await response.text();
-
-      if (!text) {
-
-        setHistory([]);
-
-        return;
-      }
-
-      const data =
-        JSON.parse(text);
-
-      if (data.error) {
-
-        console.log(data.error);
-
-        return;
-      }
-
-      setHistory(data);
-
-    } catch (error) {
-
-      console.log(error);
-    }
-  };
-
-  // =========================
-  // OPEN HISTORY
-  // =========================
-
-  const openHistory =
-    (item: any) => {
-
-      setSelectedHistory(item);
-
-      setAtsScore(
-        item.ats_score || 0
-      );
-
-      setJobMatchScore(
-        item.job_match_score || 0
-      );
-
-      setResumeLevel(
-        item.resume_level || ""
-      );
-
-      setAnalysis(
-        item.analysis || ""
-      );
-
-      setRewrittenResume(
-        item.rewritten_resume || ""
-      );
-
-      setInterviewContent(
-        item.interview_content || ""
-      );
-
-      setMatchedKeywords(
-        item.matched_keywords || []
-      );
-
-      setMissingKeywords(
-        item.missing_keywords || []
-      );
-
-      setStrengths(
-        item.strengths || []
-      );
-
-      setWeaknesses(
-        item.weaknesses || []
-      );
-
-      setJobDescription(
-        item.job_description || ""
-      );
-    };
-
-  // =========================
-  // ANALYZE
+  // ANALYZE RESUME
   // =========================
 
   const analyzeResume =
     async () => {
 
-      if (!file) {
-
-        alert("Upload resume");
-
-        return;
-      }
-
       try {
 
-        setAnalyzing(true);
+        if (!resumeFile) {
+
+          alert(
+            "Please upload resume PDF"
+          );
+
+          return;
+        }
+
+        setLoading(true);
 
         const formData =
           new FormData();
 
         formData.append(
           "resume",
-          file
-        );
-
-        formData.append(
-          "jobDescription",
-          jobDescription
+          resumeFile
         );
 
         if (jdFile) {
@@ -240,576 +78,386 @@ export default function DashboardPage() {
           await fetch(
             "/api/upload",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
 
-        const result =
+        const data =
           await response.json();
 
-        if (result.error) {
-
-          alert(result.error);
-
-          return;
-        }
+        console.log(data);
 
         setAtsScore(
-          result.atsScore
+          Number(
+            data.atsScore || 0
+          )
         );
 
-        setJobMatchScore(
-          result.jobMatchScore
+        setJobMatch(
+          Number(
+            data.jobMatch || 0
+          )
         );
 
-        setResumeLevel(
-          result.resumeLevel
+        setAiSuggestions(
+          data.aiFeedback ||
+          "No AI suggestions generated"
         );
 
-        setAnalysis(
-          result.analysis
+        // =========================
+        // RESUME LEVEL
+        // =========================
+
+        if (
+          Number(data.atsScore) >= 85
+        ) {
+
+          setResumeLevel(
+            "Advanced"
+          );
+
+        } else if (
+          Number(data.atsScore) >= 70
+        ) {
+
+          setResumeLevel(
+            "Intermediate"
+          );
+
+        } else {
+
+          setResumeLevel(
+            "Beginner"
+          );
+        }
+
+        setActiveSection(
+          "suggestions"
         );
 
-        setMatchedKeywords(
-          result.matchedKeywords
+      } catch (error) {
+
+        console.log(error);
+
+        alert(
+          "Analyze failed"
         );
-
-        setMissingKeywords(
-          result.missingKeywords
-        );
-
-        setStrengths(
-          result.strengths
-        );
-
-        setWeaknesses(
-          result.weaknesses
-        );
-
-        fetchHistory();
-
-      } catch (error: any) {
-
-        alert(error.message);
 
       } finally {
 
-        setAnalyzing(false);
+        setLoading(false);
       }
     };
 
   // =========================
-  // REWRITE
+  // REWRITE RESUME
   // =========================
 
   const rewriteResume =
     async () => {
 
-      if (!file) {
-
-        alert("Upload resume");
-
-        return;
-      }
-
       try {
 
-        setRewriting(true);
+        if (!resumeFile) {
+
+          alert(
+            "Please upload resume PDF"
+          );
+
+          return;
+        }
+
+        setLoading(true);
 
         const formData =
           new FormData();
 
         formData.append(
           "resume",
-          file
-        );
-
-        formData.append(
-          "jobDescription",
-          jobDescription
+          resumeFile
         );
 
         const response =
           await fetch(
             "/api/rewrite",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
 
-        const result =
+        const data =
           await response.json();
 
-        if (result.error) {
-
-          alert(result.error);
-
-          return;
-        }
+        console.log(data);
 
         setRewrittenResume(
-          result.rewrittenResume
+
+          data.rewrittenResume ||
+
+          "No rewritten resume generated"
         );
 
-        fetchHistory();
+        setActiveSection(
+          "rewrite"
+        );
 
-      } catch (error: any) {
+      } catch (error) {
 
-        alert(error.message);
+        console.log(error);
+
+        alert(
+          "Rewrite failed"
+        );
 
       } finally {
 
-        setRewriting(false);
+        setLoading(false);
       }
     };
 
   // =========================
-  // INTERVIEW PREP
+  // INTERVIEW QUESTIONS
   // =========================
 
-  const generateQuestions =
+  const generateInterviewQuestions =
     async () => {
-
-      if (!file) {
-
-        alert("Upload resume");
-
-        return;
-      }
 
       try {
 
-        setGeneratingQuestions(
-          true
-        );
+        if (!resumeFile) {
+
+          alert(
+            "Please upload resume PDF"
+          );
+
+          return;
+        }
+
+        setLoading(true);
 
         const formData =
           new FormData();
 
         formData.append(
           "resume",
-          file
+          resumeFile
         );
 
-        formData.append(
-          "jobDescription",
-          jobDescription
-        );
+        if (jdFile) {
+
+          formData.append(
+            "jdFile",
+            jdFile
+          );
+        }
 
         const response =
           await fetch(
             "/api/interview",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
 
-        const result =
+        const data =
           await response.json();
 
-        if (result.error) {
+        console.log(data);
 
-          alert(result.error);
+        setInterviewQuestions(
 
-          return;
-        }
+          data.interviewQuestions ||
 
-        setInterviewContent(
-          result.interviewContent
+          "No interview questions generated"
         );
 
-        fetchHistory();
+        setActiveSection(
+          "interview"
+        );
 
-      } catch (error: any) {
+      } catch (error) {
 
-        alert(error.message);
+        console.log(error);
+
+        alert(
+          "Interview generation failed"
+        );
 
       } finally {
 
-        setGeneratingQuestions(
-          false
-        );
+        setLoading(false);
       }
     };
 
   // =========================
-  // DOWNLOAD PDF
+  // UI
   // =========================
-
-  const downloadPDF =
-    async () => {
-
-      const input =
-        document.getElementById(
-          "rewrite-section"
-        );
-
-      if (!input) return;
-
-      const canvas =
-        await html2canvas(
-          input
-        );
-
-      const imgData =
-        canvas.toDataURL(
-          "image/png"
-        );
-
-      const pdf =
-        new jsPDF();
-
-      const pdfWidth =
-        pdf.internal.pageSize.getWidth();
-
-      const pdfHeight =
-        (
-          canvas.height *
-          pdfWidth
-        ) / canvas.width;
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdfWidth,
-        pdfHeight
-      );
-
-      pdf.save(
-        "rewritten-resume.pdf"
-      );
-    };
-
-  // =========================
-  // DOWNLOAD DOCX
-  // =========================
-
-  const downloadDOCX =
-    async () => {
-
-      const doc =
-        new Document({
-
-          sections: [
-            {
-              properties: {},
-
-              children: [
-
-                new Paragraph({
-
-                  children: [
-
-                    new TextRun({
-
-                      text:
-                        rewrittenResume,
-
-                      size: 24,
-                    }),
-                  ],
-                }),
-              ],
-            },
-          ],
-        });
-
-      const blob =
-        await Packer.toBlob(
-          doc
-        );
-
-      saveAs(
-        blob,
-        "rewritten-resume.docx"
-      );
-    };
 
   return (
 
-    <div
-      style={{
-        background: "#020617",
-        minHeight: "100vh",
-        color: "white",
-        padding: "30px",
-      }}
-    >
+    <div className="min-h-screen bg-[#020617] text-white p-6">
 
-      {/* TITLE */}
+      {/* HEADER */}
 
-      <h1
-        style={{
-          fontSize: "70px",
-          fontWeight: "bold",
-          marginBottom: "30px",
-        }}
-      >
-        AI Resume Analyzer
+      <h1 className="text-5xl font-bold mb-8">
+        AI Resume Assistant
       </h1>
 
-      {/* UPLOAD */}
+      {/* UPLOAD SECTION */}
 
-      <div
-        style={{
-          background: "#111827",
-          padding: "30px",
-          borderRadius: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div className="bg-[#0f172a] rounded-3xl p-8 mb-8">
 
-        <h2>
-          Upload Resume PDF
-        </h2>
+        <div className="grid md:grid-cols-2 gap-8">
 
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={(e) => {
+          {/* Resume Upload */}
 
-            if (
-              e.target.files &&
-              e.target.files[0]
-            ) {
+          <div>
 
-              setFile(
-                e.target.files[0]
-              );
-            }
-          }}
-        />
+            <label className="text-xl block mb-4">
+              Upload Resume PDF
+            </label>
 
-        <br />
-        <br />
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) =>
+                setResumeFile(
+                  e.target.files?.[0] || null
+                )
+              }
+              className="bg-white text-black w-full p-4 rounded-xl"
+            />
+          </div>
 
-        <h2>
-          Paste Job Description
-        </h2>
+          {/* JD Upload */}
 
-        <textarea
-          placeholder="Paste Job Description"
-          value={jobDescription}
-          onChange={(e) =>
-            setJobDescription(
-              e.target.value
-            )
-          }
-          rows={10}
-          style={{
-            width: "100%",
-            padding: "15px",
-            borderRadius: "10px",
-            background: "#020617",
-            color: "white",
-            border:
-              "1px solid #334155",
-            outline: "none",
-            fontSize: "16px",
-            marginBottom: "20px",
-          }}
-        />
+          <div>
 
-        <h2>
-          OR Upload Job Description PDF
-        </h2>
+            <label className="text-xl block mb-4">
+              Upload Job Description PDF
+            </label>
 
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={(e) => {
-
-            if (
-              e.target.files &&
-              e.target.files[0]
-            ) {
-
-              setJdFile(
-                e.target.files[0]
-              );
-            }
-          }}
-        />
-
-        <br />
-        <br />
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) =>
+                setJdFile(
+                  e.target.files?.[0] || null
+                )
+              }
+              className="bg-white text-black w-full p-4 rounded-xl"
+            />
+          </div>
+        </div>
 
         {/* BUTTONS */}
 
-        <button
-          onClick={analyzeResume}
-          disabled={analyzing}
-          style={{
-            background: "#06b6d4",
-            color: "white",
-            border: "none",
-            padding: "18px 40px",
-            borderRadius: "12px",
-            fontSize: "20px",
-            cursor: "pointer",
-          }}
-        >
-          {analyzing
-            ? "Analyzing..."
-            : "Analyze Resume"}
-        </button>
+        <div className="flex flex-wrap gap-6 mt-10">
 
-        <button
-          onClick={rewriteResume}
-          disabled={rewriting}
-          style={{
-            background: "#22c55e",
-            color: "white",
-            border: "none",
-            padding: "18px 40px",
-            borderRadius: "12px",
-            fontSize: "20px",
-            cursor: "pointer",
-            marginLeft: "15px",
-          }}
-        >
-          {rewriting
-            ? "Rewriting..."
-            : "Rewrite Resume"}
-        </button>
+          <button
+            onClick={analyzeResume}
+            disabled={loading}
+            className="bg-cyan-500 hover:bg-cyan-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Analyze Resume
+          </button>
 
-        <button
-          onClick={
-            generateQuestions
-          }
-          disabled={
-            generatingQuestions
-          }
-          style={{
-            background: "#f59e0b",
-            color: "white",
-            border: "none",
-            padding: "18px 40px",
-            borderRadius: "12px",
-            fontSize: "20px",
-            cursor: "pointer",
-            marginLeft: "15px",
-          }}
-        >
-          {generatingQuestions
-            ? "Preparing..."
-            : "Interview Prep"}
-        </button>
+          <button
+            onClick={rewriteResume}
+            disabled={loading}
+            className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Rewrite Resume
+          </button>
+
+          <button
+            onClick={
+              generateInterviewQuestions
+            }
+            disabled={loading}
+            className="bg-orange-500 hover:bg-orange-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Interview Prep
+          </button>
+        </div>
+
+        {loading && (
+
+          <p className="text-cyan-400 mt-6 text-lg">
+            Processing...
+          </p>
+        )}
       </div>
 
-      {/* SCORES */}
+      {/* SCORE SECTION */}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1fr 1fr 1fr",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div className="grid md:grid-cols-3 gap-6 mb-8">
 
-        <div
-          style={{
-            background: "#111827",
-            padding: "25px",
-            borderRadius: "20px",
-          }}
-        >
-          <h2>ATS Score</h2>
+        {/* ATS */}
 
-          <h1
-            style={{
-              fontSize: "60px",
-              color: "#22d3ee",
-            }}
-          >
+        <div className="bg-[#0f172a] rounded-3xl p-8">
+
+          <h2 className="text-3xl mb-6">
+            ATS Score
+          </h2>
+
+          <div className="text-7xl text-cyan-400 font-bold">
             {atsScore}%
-          </h1>
+          </div>
         </div>
 
-        <div
-          style={{
-            background: "#111827",
-            padding: "25px",
-            borderRadius: "20px",
-          }}
-        >
-          <h2>Job Match</h2>
+        {/* JOB MATCH */}
 
-          <h1
-            style={{
-              fontSize: "60px",
-              color: "#4ade80",
-            }}
-          >
-            {jobMatchScore}%
-          </h1>
+        <div className="bg-[#0f172a] rounded-3xl p-8">
+
+          <h2 className="text-3xl mb-6">
+            Job Match
+          </h2>
+
+          <div className="text-7xl text-green-400 font-bold">
+            {jobMatch}%
+          </div>
         </div>
 
-        <div
-          style={{
-            background: "#111827",
-            padding: "25px",
-            borderRadius: "20px",
-          }}
-        >
-          <h2>Resume Level</h2>
+        {/* LEVEL */}
 
-          <h1
-            style={{
-              fontSize: "32px",
-              color: "#facc15",
-            }}
-          >
+        <div className="bg-[#0f172a] rounded-3xl p-8">
+
+          <h2 className="text-3xl mb-6">
+            Resume Level
+          </h2>
+
+          <div className="text-5xl text-yellow-400 font-bold">
             {resumeLevel}
-          </h1>
+          </div>
         </div>
       </div>
 
-      {/* TABS */}
+      {/* SECTION BUTTONS */}
 
-      <div
-        style={{
-          display: "flex",
-          gap: "15px",
-          marginBottom: "25px",
-        }}
-      >
+      <div className="flex gap-4 mb-8">
 
         <button
           onClick={() =>
             setActiveSection(
-              "analysis"
+              "suggestions"
             )
           }
-          style={{
-            background:
-
-              activeSection ===
-              "analysis"
-
-                ? "#06b6d4"
-
-                : "#111827",
-
-            color: "white",
-
-            border: "none",
-
-            padding: "15px 25px",
-
-            borderRadius: "12px",
-
-            cursor: "pointer",
-
-            fontSize: "18px",
-          }}
+          className={`px-8 py-4 rounded-2xl text-xl font-semibold ${
+            activeSection ===
+            "suggestions"
+              ? "bg-cyan-500"
+              : "bg-[#0f172a]"
+          }`}
         >
           AI Suggestions
         </button>
@@ -820,28 +468,12 @@ export default function DashboardPage() {
               "rewrite"
             )
           }
-          style={{
-            background:
-
-              activeSection ===
-              "rewrite"
-
-                ? "#22c55e"
-
-                : "#111827",
-
-            color: "white",
-
-            border: "none",
-
-            padding: "15px 25px",
-
-            borderRadius: "12px",
-
-            cursor: "pointer",
-
-            fontSize: "18px",
-          }}
+          className={`px-8 py-4 rounded-2xl text-xl font-semibold ${
+            activeSection ===
+            "rewrite"
+              ? "bg-green-500"
+              : "bg-[#0f172a]"
+          }`}
         >
           Rewrite Resume
         </button>
@@ -852,286 +484,71 @@ export default function DashboardPage() {
               "interview"
             )
           }
-          style={{
-            background:
-
-              activeSection ===
-              "interview"
-
-                ? "#f59e0b"
-
-                : "#111827",
-
-            color: "white",
-
-            border: "none",
-
-            padding: "15px 25px",
-
-            borderRadius: "12px",
-
-            cursor: "pointer",
-
-            fontSize: "18px",
-          }}
+          className={`px-8 py-4 rounded-2xl text-xl font-semibold ${
+            activeSection ===
+            "interview"
+              ? "bg-orange-500"
+              : "bg-[#0f172a]"
+          }`}
         >
           Interview Prep
         </button>
       </div>
 
-      {/* ANALYSIS */}
+      {/* CONTENT */}
 
-      {activeSection ===
-      "analysis" && (
+      <div className="bg-[#0f172a] rounded-3xl p-8 min-h-[600px]">
 
-        <div
-          style={{
-            background: "#0f172a",
-            padding: "35px",
-            borderRadius: "20px",
-            marginBottom: "30px",
-          }}
-        >
+        {/* AI Suggestions */}
 
-          <h2
-            style={{
-              background: "#111827",
-              padding: "15px 20px",
-              borderRadius: "12px",
-              color: "#22d3ee",
-              fontSize: "28px",
-              marginBottom: "25px",
-            }}
-          >
-            AI Suggestions
-          </h2>
+        {activeSection ===
+          "suggestions" && (
 
-          <div
-            style={{
-              background: "#020617",
-              padding: "25px",
-              borderRadius: "15px",
-              whiteSpace: "pre-wrap",
-              lineHeight: "1.9",
-            }}
-          >
-            {analysis}
-          </div>
-        </div>
-      )}
+          <div>
 
-      {/* REWRITE */}
+            <h2 className="text-5xl text-cyan-400 mb-10">
+              AI Suggestions
+            </h2>
 
-      {activeSection ===
-      "rewrite" && (
-
-        <div
-          id="rewrite-section"
-          style={{
-            background: "#0f172a",
-            padding: "35px",
-            borderRadius: "20px",
-            marginBottom: "30px",
-          }}
-        >
-
-          <h2
-            style={{
-              background: "#111827",
-              padding: "15px 20px",
-              borderRadius: "12px",
-              color: "#4ade80",
-              fontSize: "28px",
-              marginBottom: "25px",
-            }}
-          >
-            AI Rewritten Resume
-          </h2>
-
-          <div
-            style={{
-              background: "#020617",
-              padding: "25px",
-              borderRadius: "15px",
-              whiteSpace: "pre-wrap",
-              lineHeight: "1.9",
-            }}
-          >
-            {rewrittenResume}
-          </div>
-
-          <div
-            style={{
-              marginTop: "25px",
-            }}
-          >
-
-            <button
-              onClick={
-                downloadPDF
-              }
-              style={{
-                background: "#2563eb",
-                color: "white",
-                border: "none",
-                padding: "14px 30px",
-                borderRadius: "10px",
-                cursor: "pointer",
-                marginRight: "15px",
-              }}
-            >
-              Download PDF
-            </button>
-
-            <button
-              onClick={
-                downloadDOCX
-              }
-              style={{
-                background: "#7c3aed",
-                color: "white",
-                border: "none",
-                padding: "14px 30px",
-                borderRadius: "10px",
-                cursor: "pointer",
-              }}
-            >
-              Download DOCX
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* INTERVIEW */}
-
-      {activeSection ===
-      "interview" && (
-
-        <div
-          style={{
-            background: "#0f172a",
-            padding: "35px",
-            borderRadius: "20px",
-            marginBottom: "30px",
-          }}
-        >
-
-          <h2
-            style={{
-              background: "#111827",
-              padding: "15px 20px",
-              borderRadius: "12px",
-              color: "#f59e0b",
-              fontSize: "28px",
-              marginBottom: "25px",
-            }}
-          >
-            AI Interview Preparation
-          </h2>
-
-          <div
-            style={{
-              background: "#020617",
-              padding: "25px",
-              borderRadius: "15px",
-              whiteSpace: "pre-wrap",
-              lineHeight: "1.9",
-              color: "white",
-            }}
-          >
-            {interviewContent}
-          </div>
-        </div>
-      )}
-
-      {/* HISTORY */}
-
-      <div
-        style={{
-          background: "#111827",
-          padding: "30px",
-          borderRadius: "20px",
-          marginBottom: "30px",
-        }}
-      >
-
-        <h2
-          style={{
-            fontSize: "32px",
-            marginBottom: "25px",
-          }}
-        >
-          Resume History
-        </h2>
-
-        {history.map((item) => (
-
-          <div
-            key={item.id}
-            style={{
-              background: "#020617",
-              padding: "25px",
-              borderRadius: "15px",
-              marginBottom: "20px",
-              border:
-                "1px solid #1e293b",
-            }}
-          >
-
-            <h3
-              style={{
-                color: "#38bdf8",
-                marginBottom: "10px",
-              }}
-            >
-              {item.filename}
-            </h3>
-
-            <p>
-              ATS Score:
-              {" "}
-              {item.ats_score}%
-            </p>
-
-            <p>
-              Job Match:
-              {" "}
-              {item.job_match_score}%
-            </p>
-
-            <p
-              style={{
-                color: "#94a3b8",
-                marginTop: "10px",
-              }}
-            >
-              {item.created_at}
-            </p>
-
-            <div
-              style={{
-                marginTop: "20px",
-              }}
-            >
-
-              <button
-                onClick={() =>
-                  openHistory(item)
-                }
-                style={{
-                  background: "#2563eb",
-                  color: "white",
-                  border: "none",
-                  padding: "12px 22px",
-                  borderRadius: "10px",
-                  cursor: "pointer",
-                }}
-              >
-                Open
-              </button>
+            <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
+              {aiSuggestions}
             </div>
           </div>
-        ))}
+        )}
+
+        {/* Rewrite */}
+
+        {activeSection ===
+          "rewrite" && (
+
+          <div>
+
+            <h2 className="text-5xl text-green-400 mb-10">
+              Rewrite Resume
+            </h2>
+
+            <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
+              {rewrittenResume}
+            </div>
+          </div>
+        )}
+
+        {/* Interview */}
+
+        {activeSection ===
+          "interview" && (
+
+          <div>
+
+            <h2 className="text-5xl text-orange-400 mb-10">
+              Interview Prep
+            </h2>
+
+            <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
+              {interviewQuestions}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
