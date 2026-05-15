@@ -1,11 +1,13 @@
-
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 export default function DashboardPage() {
 
-  const [selectedFile, setSelectedFile] =
+  const [file, setFile] =
     useState<File | null>(null);
 
   const [jobDescription, setJobDescription] =
@@ -17,14 +19,23 @@ export default function DashboardPage() {
   const [atsScore, setAtsScore] =
     useState(0);
 
-  const [analysis, setAnalysis] =
-    useState("");
-
   const [jobMatchScore, setJobMatchScore] =
     useState(0);
 
   const [resumeLevel, setResumeLevel] =
     useState("");
+
+  const [analysis, setAnalysis] =
+    useState("");
+
+  // =========================
+  // AI REWRITER STATE
+  // =========================
+
+  const [
+    rewrittenResume,
+    setRewrittenResume
+  ] = useState("");
 
   const [matchedKeywords, setMatchedKeywords] =
     useState<string[]>([]);
@@ -38,18 +49,55 @@ export default function DashboardPage() {
   const [weaknesses, setWeaknesses] =
     useState<string[]>([]);
 
-  const analyzeResume = async () => {
+  // =========================
+  // HISTORY STATE
+  // =========================
+
+  const [history, setHistory] =
+    useState<any[]>([]);
+
+  // =========================
+  // FETCH HISTORY
+  // =========================
+
+  useEffect(() => {
+
+    fetchHistory();
+
+  }, []);
+
+  const fetchHistory = async () => {
 
     try {
 
-      if (!selectedFile) {
+      const response =
+        await fetch("/api/history");
 
-        alert(
-          "Please upload a resume"
-        );
+      const data =
+        await response.json();
 
-        return;
-      }
+      setHistory(data);
+
+    } catch (error) {
+
+      console.log(error);
+    }
+  };
+
+  // =========================
+  // ANALYZE RESUME
+  // =========================
+
+  const analyzeResume = async () => {
+
+    if (!file) {
+
+      alert("Upload resume");
+
+      return;
+    }
+
+    try {
 
       setLoading(true);
 
@@ -58,7 +106,7 @@ export default function DashboardPage() {
 
       formData.append(
         "resume",
-        selectedFile
+        file
       );
 
       formData.append(
@@ -80,42 +128,44 @@ export default function DashboardPage() {
 
       if (result.error) {
 
-        throw new Error(
-          result.error
-        );
+        alert(result.error);
+
+        return;
       }
 
       setAtsScore(
-        result.atsScore || 0
+        result.atsScore
       );
 
       setJobMatchScore(
-        result.jobMatchScore || 0
+        result.jobMatchScore
       );
 
       setResumeLevel(
-        result.resumeLevel || ""
-      );
-
-      setMatchedKeywords(
-        result.matchedKeywords || []
-      );
-
-      setMissingKeywords(
-        result.missingKeywords || []
-      );
-
-      setStrengths(
-        result.strengths || []
-      );
-
-      setWeaknesses(
-        result.weaknesses || []
+        result.resumeLevel
       );
 
       setAnalysis(
-        result.analysis || ""
+        result.analysis
       );
+
+      setMatchedKeywords(
+        result.matchedKeywords
+      );
+
+      setMissingKeywords(
+        result.missingKeywords
+      );
+
+      setStrengths(
+        result.strengths
+      );
+
+      setWeaknesses(
+        result.weaknesses
+      );
+
+      fetchHistory();
 
     } catch (error: any) {
 
@@ -130,181 +180,493 @@ export default function DashboardPage() {
     }
   };
 
+  // =========================
+  // AI RESUME REWRITER
+  // =========================
+
+  const rewriteResume = async () => {
+
+    if (!file) {
+
+      alert("Upload resume");
+
+      return;
+    }
+
+    try {
+
+      setLoading(true);
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        "resume",
+        file
+      );
+
+      const response =
+        await fetch(
+          "/api/rewrite",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+      const result =
+        await response.json();
+
+      if (result.error) {
+
+        alert(result.error);
+
+        return;
+      }
+
+      setRewrittenResume(
+        result.rewrittenResume
+      );
+
+    } catch (error: any) {
+
+      alert(
+        error.message ||
+        "Rewrite failed"
+      );
+
+    } finally {
+
+      setLoading(false);
+    }
+  };
+
   return (
 
     <div
       style={{
-        padding: "40px",
-        background: "#0b1020",
+        background: "#020617",
         minHeight: "100vh",
         color: "white",
+        padding: "30px",
       }}
     >
 
       <h1
         style={{
-          fontSize: "50px",
+          fontSize: "70px",
+          fontWeight: "bold",
           marginBottom: "30px",
         }}
       >
         AI Resume Analyzer
       </h1>
 
-      <input
-        type="file"
-        accept=".pdf"
-        onChange={(e) => {
+      {/* ========================= */}
+      {/* UPLOAD */}
+      {/* ========================= */}
 
-          if (
-            e.target.files &&
-            e.target.files[0]
-          ) {
+      <div
+        style={{
+          background: "#111827",
+          padding: "30px",
+          borderRadius: "20px",
+          marginBottom: "30px",
+        }}
+      >
 
-            setSelectedFile(
+        <input
+          type="file"
+          accept=".pdf"
+          onChange={(e) => {
+
+            if (
+              e.target.files &&
               e.target.files[0]
-            );
+            ) {
+
+              setFile(
+                e.target.files[0]
+              );
+            }
+          }}
+        />
+
+        
+
+        
+
+
+        <textarea
+          placeholder="Paste Job Description"
+          value={jobDescription}
+          onChange={(e) =>
+            setJobDescription(
+              e.target.value
+            )
           }
-        }}
-      />
+          rows={10}
+          style={{
+            width: "100%",
+            padding: "15px",
+            borderRadius: "10px",
+            color: "black",
+          }}
+        />
 
-      
+        
 
-      
-
-
-      <textarea
-        placeholder="Paste Job Description"
-        value={jobDescription}
-        onChange={(e) =>
-          setJobDescription(
-            e.target.value
-          )
-        }
-        style={{
-          width: "100%",
-          height: "150px",
-          padding: "10px",
-          color: "black",
-        }}
-      />
-
-      
-
-      
+        
 
 
-      <button
-        onClick={analyzeResume}
-        style={{
-          padding: "15px 30px",
-          background: "#22d3ee",
-          border: "none",
-          borderRadius: "10px",
-          fontSize: "20px",
-          cursor: "pointer",
-        }}
-      >
-        {
-          loading
+        {/* ANALYZE BUTTON */}
+
+        <button
+          onClick={analyzeResume}
+          disabled={loading}
+          style={{
+            background: "#06b6d4",
+            color: "white",
+            border: "none",
+            padding: "18px 40px",
+            borderRadius: "12px",
+            fontSize: "20px",
+            cursor: "pointer",
+          }}
+        >
+
+          {loading
             ? "Analyzing..."
-            : "Analyze Resume"
-        }
-      </button>
+            : "Analyze Resume"}
 
-      
+        </button>
 
-      
+        {/* REWRITE BUTTON */}
 
+        <button
+          onClick={rewriteResume}
+          disabled={loading}
+          style={{
+            background: "#22c55e",
+            color: "white",
+            border: "none",
+            padding: "18px 40px",
+            borderRadius: "12px",
+            fontSize: "20px",
+            cursor: "pointer",
+            marginLeft: "15px",
+          }}
+        >
 
-      <h2>
-        ATS Score: {atsScore}
-      </h2>
+          {loading
+            ? "Rewriting..."
+            : "Rewrite Resume"}
 
-      <h2>
-        Job Match Score:
-        {" "}
-        {jobMatchScore}
-      </h2>
+        </button>
+      </div>
 
-      <h2>
-        Resume Level:
-        {" "}
-        {resumeLevel}
-      </h2>
+      {/* ========================= */}
+      {/* SCORES */}
+      {/* ========================= */}
 
-      
-
-
-      <h2>
-        Matched Keywords
-      </h2>
-
-      <ul>
-        {matchedKeywords.map(
-          (keyword, index) => (
-
-          <li key={index}>
-            {keyword}
-          </li>
-        ))}
-      </ul>
-
-      <h2>
-        Missing Keywords
-      </h2>
-
-      <ul>
-        {missingKeywords.map(
-          (keyword, index) => (
-
-          <li key={index}>
-            {keyword}
-          </li>
-        ))}
-      </ul>
-
-      <h2>
-        Strengths
-      </h2>
-
-      <ul>
-        {strengths.map(
-          (item, index) => (
-
-          <li key={index}>
-            {item}
-          </li>
-        ))}
-      </ul>
-
-      <h2>
-        Weaknesses
-      </h2>
-
-      <ul>
-        {weaknesses.map(
-          (item, index) => (
-
-          <li key={index}>
-            {item}
-          </li>
-        ))}
-      </ul>
-
-      <h2>
-        AI Suggestions
-      </h2>
-
-      <pre
+      <div
         style={{
-          whiteSpace:
-            "pre-wrap",
-          lineHeight: "1.7",
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 1fr 1fr",
+          gap: "20px",
+          marginBottom: "30px",
         }}
       >
-        {analysis}
-      </pre>
 
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>ATS Score</h2>
+
+          <h1
+            style={{
+              fontSize: "60px",
+              color: "#22d3ee",
+            }}
+          >
+            {atsScore}%
+          </h1>
+        </div>
+
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>Job Match</h2>
+
+          <h1
+            style={{
+              fontSize: "60px",
+              color: "#4ade80",
+            }}
+          >
+            {jobMatchScore}%
+          </h1>
+        </div>
+
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>Resume Level</h2>
+
+          <h1
+            style={{
+              fontSize: "32px",
+              color: "#facc15",
+            }}
+          >
+            {resumeLevel}
+          </h1>
+        </div>
+      </div>
+
+      {/* ========================= */}
+      {/* KEYWORDS */}
+      {/* ========================= */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 1fr",
+          gap: "20px",
+          marginBottom: "30px",
+        }}
+      >
+
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>
+            Matched Keywords
+          </h2>
+
+          {matchedKeywords.map(
+            (item, index) => (
+
+              <p key={index}>
+                ✅ {item}
+              </p>
+            )
+          )}
+        </div>
+
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>
+            Missing Keywords
+          </h2>
+
+          {missingKeywords.map(
+            (item, index) => (
+
+              <p key={index}>
+                ❌ {item}
+              </p>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* ========================= */}
+      {/* STRENGTHS / WEAKNESSES */}
+      {/* ========================= */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "1fr 1fr",
+          gap: "20px",
+          marginBottom: "30px",
+        }}
+      >
+
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>
+            Strengths
+          </h2>
+
+          {strengths.map(
+            (item, index) => (
+
+              <p key={index}>
+                ✅ {item}
+              </p>
+            )
+          )}
+        </div>
+
+        <div
+          style={{
+            background: "#111827",
+            padding: "25px",
+            borderRadius: "20px",
+          }}
+        >
+
+          <h2>
+            Weaknesses
+          </h2>
+
+          {weaknesses.map(
+            (item, index) => (
+
+              <p key={index}>
+                ❌ {item}
+              </p>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* ========================= */}
+      {/* AI ANALYSIS */}
+      {/* ========================= */}
+
+      <div
+        style={{
+          background: "#111827",
+          padding: "30px",
+          borderRadius: "20px",
+          marginBottom: "30px",
+        }}
+      >
+
+        <h2
+          style={{
+            marginBottom: "20px",
+          }}
+        >
+          AI Suggestions
+        </h2>
+
+        <div
+          style={{
+            whiteSpace: "pre-wrap",
+            lineHeight: "1.8",
+          }}
+        >
+          {analysis}
+        </div>
+      </div>
+
+      {/* ========================= */}
+      {/* AI REWRITTEN RESUME */}
+      {/* ========================= */}
+
+      <div
+        style={{
+          background: "#111827",
+          padding: "30px",
+          borderRadius: "20px",
+          marginBottom: "30px",
+        }}
+      >
+
+        <h2>
+          AI Rewritten Resume
+        </h2>
+
+        <div
+          style={{
+            whiteSpace: "pre-wrap",
+            lineHeight: "1.8",
+            marginTop: "20px",
+          }}
+        >
+          {rewrittenResume}
+        </div>
+      </div>
+
+      {/* ========================= */}
+      {/* RESUME HISTORY */}
+      {/* ========================= */}
+
+      <div
+        style={{
+          background: "#111827",
+          padding: "30px",
+          borderRadius: "20px",
+        }}
+      >
+
+        <h2>
+          Resume History
+        </h2>
+
+        {history.map((item) => (
+
+          <div
+            key={item.id}
+            style={{
+              border: "1px solid gray",
+              padding: "15px",
+              marginBottom: "15px",
+              borderRadius: "10px",
+            }}
+          >
+
+            <h3>
+              {item.filename}
+            </h3>
+
+            <p>
+              ATS Score:
+              {" "}
+              {item.ats_score}
+            </p>
+
+            <p>
+              Job Match Score:
+              {" "}
+              {item.job_match_score}
+            </p>
+
+            <small>
+              {item.created_at}
+            </small>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
