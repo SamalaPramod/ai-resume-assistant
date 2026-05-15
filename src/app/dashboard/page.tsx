@@ -10,32 +10,14 @@ export default function DashboardPage() {
   const [jdFile, setJdFile] =
     useState<File | null>(null);
 
-  const [loading, setLoading] =
-    useState(false);
-
   const [atsScore, setAtsScore] =
     useState(0);
 
   const [jobMatch, setJobMatch] =
     useState(0);
 
-  const [resumeLevel, setResumeLevel] =
-    useState("");
-
   const [aiFeedback, setAiFeedback] =
     useState("");
-
-  const [matchedKeywords, setMatchedKeywords] =
-    useState<string[]>([]);
-
-  const [missingKeywords, setMissingKeywords] =
-    useState<string[]>([]);
-
-  const [strengths, setStrengths] =
-    useState<string[]>([]);
-
-  const [weaknesses, setWeaknesses] =
-    useState<string[]>([]);
 
   const [interviewQuestions, setInterviewQuestions] =
     useState("");
@@ -44,108 +26,88 @@ export default function DashboardPage() {
     useState("");
 
   // =========================
-  // ANALYZE RESUME
+  // ANALYZE
   // =========================
 
-  const analyzeResume = async () => {
-
-    try {
-
-      if (!selectedFile) {
-
-        alert("Please upload resume");
-        return;
-      }
-
-      setLoading(true);
-
-      const formData =
-        new FormData();
-
-      formData.append(
-        "resume",
-        selectedFile
-      );
-
-      if (jdFile) {
-
-        formData.append(
-          "jdFile",
-          jdFile
-        );
-      }
-
-      const response =
-        await fetch(
-          "/api/upload",
-          {
-            method: "POST",
-            body: formData,
-          }
-        );
-
-      const data =
-        await response.json();
-
-      setAtsScore(
-        data.atsScore || 0
-      );
-
-      setJobMatch(
-        data.jobMatch || 0
-      );
-
-      setResumeLevel(
-        data.resumeLevel || ""
-      );
-
-      setAiFeedback(
-        data.aiFeedback || ""
-      );
-
-      setMatchedKeywords(
-        data.matchedKeywords || []
-      );
-
-      setMissingKeywords(
-        data.missingKeywords || []
-      );
-
-      setStrengths(
-        data.strengths || []
-      );
-
-      setWeaknesses(
-        data.weaknesses || []
-      );
-
-    } catch (error) {
-
-      console.log(error);
-      alert("Analysis failed");
-
-    } finally {
-
-      setLoading(false);
-    }
-  };
-
-  // =========================
-  // INTERVIEW QUESTIONS
-  // =========================
-
-  const generateInterviewQuestions =
+  const analyzeResume =
     async () => {
 
       try {
 
         if (!selectedFile) {
 
-          alert("Please upload resume");
+          alert(
+            "Upload resume"
+          );
+
           return;
         }
 
-        setLoading(true);
+        const formData =
+          new FormData();
+
+        formData.append(
+          "resume",
+          selectedFile
+        );
+
+        if (jdFile) {
+
+          formData.append(
+            "jdFile",
+            jdFile
+          );
+        }
+
+        const response =
+          await fetch(
+            "/api/upload",
+            {
+
+              method: "POST",
+
+              body: formData,
+            }
+          );
+
+        const data =
+          await response.json();
+
+        setAtsScore(
+          data.atsScore || 0
+        );
+
+        setJobMatch(
+          data.jobMatch || 0
+        );
+
+        setAiFeedback(
+          data.aiFeedback || ""
+        );
+
+      } catch (error) {
+
+        console.log(error);
+      }
+    };
+
+  // =========================
+  // INTERVIEW
+  // =========================
+
+  const generateInterview =
+    async () => {
+
+      try {
+
+        if (!selectedFile) {
+
+          alert(
+            "Upload resume"
+          );
+
+          return;
+        }
 
         const formData =
           new FormData();
@@ -167,7 +129,9 @@ export default function DashboardPage() {
           await fetch(
             "/api/interview",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
@@ -182,16 +146,11 @@ export default function DashboardPage() {
       } catch (error) {
 
         console.log(error);
-        alert("Interview generation failed");
-
-      } finally {
-
-        setLoading(false);
       }
     };
 
   // =========================
-  // REWRITE RESUME
+  // REWRITE
   // =========================
 
   const rewriteResume =
@@ -201,11 +160,12 @@ export default function DashboardPage() {
 
         if (!selectedFile) {
 
-          alert("Please upload resume");
+          alert(
+            "Upload resume"
+          );
+
           return;
         }
-
-        setLoading(true);
 
         const formData =
           new FormData();
@@ -219,7 +179,9 @@ export default function DashboardPage() {
           await fetch(
             "/api/rewrite",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
@@ -234,251 +196,134 @@ export default function DashboardPage() {
       } catch (error) {
 
         console.log(error);
-        alert("Rewrite failed");
-
-      } finally {
-
-        setLoading(false);
       }
     };
 
   return (
 
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-[#020617] text-white p-8">
 
-      <div className="max-w-7xl mx-auto">
+      <h1 className="text-5xl font-bold mb-10">
+        AI Resume Assistant
+      </h1>
 
-        <h1 className="text-4xl font-bold mb-8">
-          AI Resume Assistant
-        </h1>
+      {/* Upload Section */}
 
-        {/* Upload Section */}
+      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
 
-        <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
+        <div className="grid md:grid-cols-2 gap-6">
 
-          <h2 className="text-2xl font-semibold mb-4">
-            Upload Files
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) =>
+              setSelectedFile(
+                e.target.files?.[0] || null
+              )
+            }
+            className="bg-white text-black p-4 rounded-xl"
+          />
+
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) =>
+              setJdFile(
+                e.target.files?.[0] || null
+              )
+            }
+            className="bg-white text-black p-4 rounded-xl"
+          />
+        </div>
+
+        <div className="flex gap-6 mt-8">
+
+          <button
+            onClick={analyzeResume}
+            className="bg-cyan-500 hover:bg-cyan-600 px-8 py-4 rounded-2xl text-2xl font-semibold"
+          >
+            Analyze Resume
+          </button>
+
+          <button
+            onClick={generateInterview}
+            className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-2xl text-2xl font-semibold"
+          >
+            Interview Prep
+          </button>
+
+          <button
+            onClick={rewriteResume}
+            className="bg-orange-500 hover:bg-orange-600 px-8 py-4 rounded-2xl text-2xl font-semibold"
+          >
+            Rewrite Resume
+          </button>
+        </div>
+      </div>
+
+      {/* Scores */}
+
+      <div className="grid md:grid-cols-2 gap-8 mb-8">
+
+        <div className="bg-[#0f172a] p-8 rounded-3xl">
+
+          <h2 className="text-3xl mb-4">
+            ATS Score
           </h2>
 
-          <div className="grid md:grid-cols-2 gap-4">
-
-            <div>
-
-              <label className="font-medium block mb-2">
-                Resume PDF
-              </label>
-
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) =>
-                  setSelectedFile(
-                    e.target.files?.[0] || null
-                  )
-                }
-                className="border p-3 rounded-lg w-full"
-              />
-            </div>
-
-            <div>
-
-              <label className="font-medium block mb-2">
-                Job Description PDF
-              </label>
-
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) =>
-                  setJdFile(
-                    e.target.files?.[0] || null
-                  )
-                }
-                className="border p-3 rounded-lg w-full"
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-4 mt-6">
-
-            <button
-              onClick={analyzeResume}
-              className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold"
-            >
-              Analyze Resume
-            </button>
-
-            <button
-              onClick={generateInterviewQuestions}
-              className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold"
-            >
-              Interview Questions
-            </button>
-
-            <button
-              onClick={rewriteResume}
-              className="bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold"
-            >
-              Rewrite Resume
-            </button>
-          </div>
-
-          {loading && (
-            <p className="mt-4 text-blue-600 font-medium">
-              Processing...
-            </p>
-          )}
-        </div>
-
-        {/* ATS Section */}
-
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-
-            <h2 className="text-2xl font-semibold mb-4">
-              ATS Score
-            </h2>
-
-            <div className="text-5xl font-bold text-blue-600 mb-4">
-              {atsScore}%
-            </div>
-
-            <p className="text-lg">
-              Job Match:
-              <span className="font-semibold ml-2">
-                {jobMatch}%
-              </span>
-            </p>
-
-            <p className="text-lg mt-2">
-              Resume Level:
-              <span className="font-semibold ml-2">
-                {resumeLevel}
-              </span>
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-
-            <h2 className="text-2xl font-semibold mb-4">
-              AI Suggestions
-            </h2>
-
-            <div className="whitespace-pre-wrap text-gray-700 leading-8">
-              {aiFeedback}
-            </div>
+          <div className="text-7xl text-cyan-400 font-bold">
+            {atsScore}%
           </div>
         </div>
 
-        {/* Keywords */}
+        <div className="bg-[#0f172a] p-8 rounded-3xl">
 
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-
-            <h2 className="text-2xl font-semibold mb-4 text-green-700">
-              Matched Keywords
-            </h2>
-
-            <div className="flex flex-wrap gap-2">
-
-              {matchedKeywords.map((item, index) => (
-
-                <span
-                  key={index}
-                  className="bg-green-100 text-green-700 px-3 py-1 rounded-full"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-
-            <h2 className="text-2xl font-semibold mb-4 text-red-700">
-              Missing Keywords
-            </h2>
-
-            <div className="flex flex-wrap gap-2">
-
-              {missingKeywords.map((item, index) => (
-
-                <span
-                  key={index}
-                  className="bg-red-100 text-red-700 px-3 py-1 rounded-full"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Strengths & Weaknesses */}
-
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-
-            <h2 className="text-2xl font-semibold mb-4">
-              Strengths
-            </h2>
-
-            <ul className="list-disc pl-6 space-y-2">
-
-              {strengths.map((item, index) => (
-
-                <li key={index}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-
-            <h2 className="text-2xl font-semibold mb-4">
-              Weaknesses
-            </h2>
-
-            <ul className="list-disc pl-6 space-y-2">
-
-              {weaknesses.map((item, index) => (
-
-                <li key={index}>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        {/* Interview Questions */}
-
-        <div className="bg-white rounded-2xl shadow-md p-6 mb-6">
-
-          <h2 className="text-2xl font-semibold mb-4">
-            Interview Questions
+          <h2 className="text-3xl mb-4">
+            Job Match
           </h2>
 
-          <div className="whitespace-pre-wrap text-gray-700 leading-8">
-            {interviewQuestions}
+          <div className="text-7xl text-green-400 font-bold">
+            {jobMatch}%
           </div>
         </div>
+      </div>
 
-        {/* Resume Rewrite */}
+      {/* AI Suggestions */}
 
-        <div className="bg-white rounded-2xl shadow-md p-6">
+      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
 
-          <h2 className="text-2xl font-semibold mb-4">
-            Rewritten Resume
-          </h2>
+        <h2 className="text-3xl mb-6">
+          AI Suggestions
+        </h2>
 
-          <div className="whitespace-pre-wrap text-gray-700 leading-8">
-            {rewrittenResume}
-          </div>
+        <div className="whitespace-pre-wrap leading-8 text-gray-300">
+          {aiFeedback}
+        </div>
+      </div>
+
+      {/* Interview Questions */}
+
+      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
+
+        <h2 className="text-3xl mb-6">
+          Interview Questions
+        </h2>
+
+        <div className="whitespace-pre-wrap leading-8 text-gray-300">
+          {interviewQuestions}
+        </div>
+      </div>
+
+      {/* Rewrite */}
+
+      <div className="bg-[#0f172a] p-8 rounded-3xl">
+
+        <h2 className="text-3xl mb-6">
+          Rewritten Resume
+        </h2>
+
+        <div className="whitespace-pre-wrap leading-8 text-gray-300">
+          {rewrittenResume}
         </div>
       </div>
     </div>
