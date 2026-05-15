@@ -1,15 +1,12 @@
 export const runtime = "nodejs";
 
 import OpenAI from "openai";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 import { supabase } from "@/app/lib/supabase";
-
-const pdfParse =
-  require("pdf-parse");
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
-  baseURL:
-    "https://api.groq.com/openai/v1",
+  baseURL: "https://api.groq.com/openai/v1",
 });
 
 export async function POST(req: Request) {
@@ -244,10 +241,7 @@ export async function POST(req: Request) {
         atsScore += 4;
       }
 
-      if (
-        jdMatch &&
-        !resumeMatch
-      ) {
+      if (jdMatch && !resumeMatch) {
 
         missingKeywords.push(
           mainKeyword
@@ -256,177 +250,56 @@ export async function POST(req: Request) {
     });
 
     // =========================
-    // EXPERIENCE ANALYSIS
+    // STRENGTHS
     // =========================
 
-    const internshipCount =
-      (
-        lowerResume.match(
-          /intern/g
-        ) || []
-      ).length;
-
-    if (internshipCount >= 1) {
-
-      atsScore += 10;
+    if (resumeText.length > 1000) {
 
       strengths.push(
-        "Internship experience found"
+        "Good resume content length"
       );
+    }
 
-    } else {
+    if (matchedKeywords.length > 8) {
+
+      strengths.push(
+        "Strong technical keyword coverage"
+      );
+    }
+
+    if (
+      lowerResume.includes("project")
+    ) {
+
+      strengths.push(
+        "Projects section detected"
+      );
+    }
+
+    // =========================
+    // WEAKNESSES
+    // =========================
+
+    if (missingKeywords.length > 5) {
 
       weaknesses.push(
-        "No internship experience"
+        "Missing important job keywords"
       );
     }
 
-    // =========================
-    // PROJECT ANALYSIS
-    // =========================
-
-    const projectCount =
-      (
-        lowerResume.match(
-          /project/g
-        ) || []
-      ).length;
-
-    if (projectCount >= 2) {
-
-      atsScore += 15;
-
-      strengths.push(
-        "Strong project portfolio"
-      );
-
-    } else {
+    if (resumeText.length < 500) {
 
       weaknesses.push(
-        "Need more technical projects"
+        "Resume content too short"
       );
     }
 
     // =========================
-    // AI/ML ANALYSIS
+    // FINAL SCORE
     // =========================
 
-    if (
-      lowerResume.includes(
-        "tensorflow"
-      ) ||
-      lowerResume.includes(
-        "machine learning"
-      )
-    ) {
-
-      atsScore += 15;
-
-      strengths.push(
-        "Strong AI/ML profile"
-      );
-    }
-
-    // =========================
-    // PROBLEM SOLVING
-    // =========================
-
-    if (
-      lowerResume.includes(
-        "leetcode"
-      ) ||
-      lowerResume.includes(
-        "codeforces"
-      )
-    ) {
-
-      atsScore += 10;
-
-      strengths.push(
-        "Excellent problem solving"
-      );
-    }
-
-    // =========================
-    // EDUCATION QUALITY
-    // =========================
-
-    if (
-      lowerResume.includes(
-        "nit"
-      ) ||
-      lowerResume.includes(
-        "iit"
-      )
-    ) {
-
-      atsScore += 10;
-
-      strengths.push(
-        "Strong academic profile"
-      );
-    }
-
-    // =========================
-    // JOB MATCH SCORE
-    // =========================
-
-    let jobMatchScore = 0;
-
-    const totalKeywords =
-      matchedKeywords.length +
-      missingKeywords.length;
-
-    if (totalKeywords > 0) {
-
-      jobMatchScore =
-        Math.floor(
-          (
-            matchedKeywords.length /
-            totalKeywords
-          ) * 100
-        );
-    }
-
-    atsScore +=
-      Math.floor(
-        jobMatchScore / 4
-      );
-
-    // =========================
-    // SCORE LIMIT
-    // =========================
-
-    if (atsScore > 100) {
-      atsScore = 100;
-    }
-
-    // =========================
-    // RESUME LEVEL
-    // =========================
-
-    let resumeLevel =
-      "Needs Improvement";
-
-    if (atsScore >= 85) {
-
-      resumeLevel =
-        "Recruiter Ready";
-
-    } else if (
-      atsScore >= 70
-    ) {
-
-      resumeLevel =
-        "Strong Resume";
-
-    } else if (
-      atsScore >= 50
-    ) {
-
-      resumeLevel =
-        "Intermediate Resume";
-    }
+    atsScore =
+      Math.min(100, atsScore);
 
     // =========================
     // AI ANALYSIS
@@ -446,17 +319,16 @@ export async function POST(req: Request) {
             role: "system",
 
             content: `
-You are a professional ATS reviewer and world-class resume writer.
+You are an ATS resume analyzer.
 
-Provide:
-- ATS improvements
+Analyze the resume professionally.
+
+Give:
+- ATS feedback
+- improvements
 - missing skills
-- recruiter analysis
-- better projects
-- stronger bullet points
-- detailed resume improvements
-- professional rewriting suggestions
-- FAANG-level resume recommendations
+- recruiter suggestions
+- resume optimization tips
 `,
           },
 
@@ -464,66 +336,55 @@ Provide:
             role: "user",
 
             content: `
-JOB DESCRIPTION:
-${jobDescription}
+Resume:
 
-RESUME:
 ${resumeText}
 
-ATS SCORE:
-${atsScore}
+Job Description:
 
-JOB MATCH SCORE:
-${jobMatchScore}
-
-MATCHED KEYWORDS:
-${matchedKeywords.join(", ")}
-
-MISSING KEYWORDS:
-${missingKeywords.join(", ")}
-
-STRENGTHS:
-${strengths.join(", ")}
-
-WEAKNESSES:
-${weaknesses.join(", ")}
+${jobDescription}
 `,
           },
         ],
       });
 
-    const aiSuggestions =
-      completion
-        .choices[0]
-        .message
-        .content || "";
+    const aiFeedback =
+      completion.choices[0]
+        .message.content || "";
 
     // =========================
-    // SAVE HISTORY
+    // SAVE TO SUPABASE
     // =========================
 
     await supabase
-      .from("resume_history")
+      .from("resume_analyses")
       .insert({
-        filename: file.name,
+
         ats_score: atsScore,
-        job_match_score:
-          jobMatchScore,
-        analysis:
-          aiSuggestions,
+
+        matched_keywords:
+          matchedKeywords,
+
+        missing_keywords:
+          missingKeywords,
+
+        strengths,
+
+        weaknesses,
+
+        ai_feedback:
+          aiFeedback,
       });
 
     // =========================
-    // FINAL RESPONSE
+    // RESPONSE
     // =========================
 
     return Response.json({
 
+      success: true,
+
       atsScore,
-
-      jobMatchScore,
-
-      resumeLevel,
 
       matchedKeywords,
 
@@ -533,22 +394,19 @@ ${weaknesses.join(", ")}
 
       weaknesses,
 
-      analysis:
-        aiSuggestions,
+      aiFeedback,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
 
-    console.log(
-      "DETAILED ERROR:",
-      error
-    );
+    console.log(error);
 
     return Response.json({
 
       error:
-        error.message ||
-        "Processing failed",
+        error instanceof Error
+          ? error.message
+          : "Upload failed",
     });
   }
 }

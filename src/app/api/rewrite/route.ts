@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import pdfParse from "pdf-parse";
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -10,7 +10,8 @@ export async function POST(req: Request) {
 
   try {
 
-    const data = await req.formData();
+    const data =
+      await req.formData();
 
     const file =
       data.get("resume") as File;
@@ -18,11 +19,13 @@ export async function POST(req: Request) {
     if (!file) {
 
       return Response.json({
-        error: "No file uploaded",
+
+        error:
+          "No file uploaded",
       });
     }
 
-    // PDF EXTRACTION
+    // Convert uploaded file to buffer
 
     const bytes =
       await file.arrayBuffer();
@@ -30,13 +33,15 @@ export async function POST(req: Request) {
     const buffer =
       Buffer.from(bytes);
 
+    // Extract PDF text
+
     const parsed =
       await pdfParse(buffer);
 
     const resumeText =
       parsed.text || "";
 
-    // AI REWRITE
+    // AI Resume Rewrite
 
     const completion =
       await client.chat.completions.create({
@@ -58,11 +63,11 @@ Rewrite the resume professionally.
 
 Improve:
 - ATS optimization
-- wording
-- action verbs
-- recruiter readability
-- project descriptions
 - technical wording
+- recruiter readability
+- action verbs
+- project descriptions
+- experience wording
 `,
           },
 
@@ -70,7 +75,7 @@ Improve:
             role: "user",
 
             content: `
-Rewrite this resume:
+Rewrite this resume professionally:
 
 ${resumeText}
 `,
@@ -78,11 +83,15 @@ ${resumeText}
         ],
       });
 
+    const rewrittenResume =
+      completion.choices[0]
+        .message.content || "";
+
     return Response.json({
 
-      rewrittenResume:
-        completion.choices[0]
-          .message.content || "",
+      success: true,
+
+      rewrittenResume,
     });
 
   } catch (error: unknown) {
