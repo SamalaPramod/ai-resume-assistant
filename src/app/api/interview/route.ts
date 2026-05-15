@@ -10,19 +10,19 @@ export async function POST(req: Request) {
 
   try {
 
-    const data =
+    const formData =
       await req.formData();
 
-    const file =
-      data.get("resume") as File;
+    const resumeFile =
+      formData.get("resume") as File;
 
     const jdFile =
-      data.get("jdFile") as File;
+      formData.get("jdFile") as File;
 
-    if (!file) {
+    if (!resumeFile) {
 
       return Response.json({
-        error: "No resume uploaded",
+        error: "Resume missing",
       });
     }
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     // =========================
 
     const resumeBytes =
-      await file.arrayBuffer();
+      await resumeFile.arrayBuffer();
 
     const resumeBuffer =
       Buffer.from(resumeBytes);
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // AI INTERVIEW QUESTIONS
+    // AI QUESTIONS
     // =========================
 
     const completion =
@@ -93,21 +93,16 @@ export async function POST(req: Request) {
             role: "system",
 
             content: `
-You are a FAANG-level interviewer.
+You are a senior technical interviewer.
 
-Generate realistic interview questions from:
-- candidate projects
-- technologies
-- experience
-- resume
-- job description
-
-Include:
+Generate:
 - HR questions
-- Technical questions
-- Project deep-dive questions
-- Scenario questions
-- Coding questions
+- technical questions
+- coding questions
+- project questions
+- scenario questions
+
+based on resume and job description.
 `,
           },
 
@@ -127,11 +122,13 @@ ${jdText}
         ],
       });
 
+    const interviewQuestions =
+      completion.choices[0]
+        .message.content || "";
+
     return Response.json({
 
-      interviewQuestions:
-        completion.choices[0]
-          .message.content || "",
+      interviewQuestions,
     });
 
   } catch (error: unknown) {
