@@ -1,7 +1,5 @@
-export const runtime = "nodejs";
-
 import OpenAI from "openai";
-import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import pdfParse from "pdf-parse";
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -12,10 +10,6 @@ export async function POST(req: Request) {
 
   try {
 
-    // =========================
-    // FORM DATA
-    // =========================
-
     const data =
       await req.formData();
 
@@ -25,17 +19,10 @@ export async function POST(req: Request) {
     const jdFile =
       data.get("jdFile") as File;
 
-    let jobDescription =
-      (data.get(
-        "jobDescription"
-      ) as string) || "";
-
     if (!file) {
 
       return Response.json({
-
-        error:
-          "No resume uploaded",
+        error: "No resume uploaded",
       });
     }
 
@@ -50,21 +37,22 @@ export async function POST(req: Request) {
       Buffer.from(resumeBytes);
 
     const parsedResume =
-      await pdfParse(
-        resumeBuffer
-      );
+      await pdfParse(resumeBuffer);
 
     let resumeText =
       parsedResume.text || "";
 
     resumeText =
       resumeText
+        .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
         .trim();
 
     // =========================
-    // JOB DESCRIPTION PDF
+    // JD PDF
     // =========================
+
+    let jdText = "";
 
     if (jdFile) {
 
@@ -75,12 +63,16 @@ export async function POST(req: Request) {
         Buffer.from(jdBytes);
 
       const parsedJD =
-        await pdfParse(
-          jdBuffer
-        );
+        await pdfParse(jdBuffer);
 
-      jobDescription =
+      jdText =
         parsedJD.text || "";
+
+      jdText =
+        jdText
+          .replace(/\n/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
     }
 
     // =========================
@@ -101,20 +93,21 @@ export async function POST(req: Request) {
             role: "system",
 
             content: `
-You are a senior technical interviewer.
+You are a FAANG-level interviewer.
 
-Generate:
-- 10 HR interview questions
-- 10 Technical interview questions
-- 10 Project-based questions
-- 10 Behavioral questions
-- 10 Coding questions
+Generate realistic interview questions from:
+- candidate projects
+- technologies
+- experience
+- resume
+- job description
 
-based on the resume and job description.
-
-Also provide short answers.
-
-Format properly with headings.
+Include:
+- HR questions
+- Technical questions
+- Project deep-dive questions
+- Scenario questions
+- Coding questions
 `,
           },
 
@@ -122,36 +115,26 @@ Format properly with headings.
             role: "user",
 
             content: `
-Resume:
+RESUME:
 
 ${resumeText}
 
-Job Description:
+JOB DESCRIPTION:
 
-${jobDescription}
+${jdText}
 `,
           },
         ],
       });
 
-    const interviewQuestions =
-      completion.choices[0]
-        .message.content || "";
-
-    // =========================
-    // RESPONSE
-    // =========================
-
     return Response.json({
 
-      success: true,
-
-      interviewQuestions,
+      interviewQuestions:
+        completion.choices[0]
+          .message.content || "",
     });
 
-  } catch (
-    error: unknown
-  ) {
+  } catch (error: unknown) {
 
     console.log(error);
 
