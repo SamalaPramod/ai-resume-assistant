@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   try {
 
     // =========================
-    // GET FORM DATA
+    // FORM DATA
     // =========================
 
     const data =
@@ -23,48 +23,38 @@ export async function POST(req: Request) {
     const file =
       data.get("resume") as File;
 
-    // =========================
-    // JOB DESCRIPTION
-    // =========================
+    const jdFile =
+      data.get("jdFile") as File;
 
     let jobDescription =
       (data.get(
         "jobDescription"
       ) as string) || "";
 
-    // =========================
-    // JD PDF
-    // =========================
-
-    const jdFile =
-      data.get("jdFile") as File;
-
     if (!file) {
 
       return Response.json({
-        error: "No file uploaded",
+        error: "No resume uploaded",
       });
     }
 
     // =========================
-    // PDF EXTRACTION
+    // RESUME PDF PARSING
     // =========================
 
-    const bytes =
+    const resumeBytes =
       await file.arrayBuffer();
 
-    const buffer =
-      Buffer.from(bytes);
+    const resumeBuffer =
+      Buffer.from(resumeBytes);
 
-    const parsed =
-      await pdfParse(buffer);
+    const parsedResume =
+      await pdfParse(
+        resumeBuffer
+      );
 
     let resumeText =
-      parsed.text || "";
-
-    // =========================
-    // CLEAN RESUME TEXT
-    // =========================
+      parsedResume.text || "";
 
     resumeText =
       resumeText
@@ -83,192 +73,164 @@ export async function POST(req: Request) {
       const jdBuffer =
         Buffer.from(jdBytes);
 
-      const jdParsed =
-        await pdfParse(jdBuffer);
-
-      const jdText =
-        jdParsed.text || "";
+      const parsedJD =
+        await pdfParse(
+          jdBuffer
+        );
 
       jobDescription =
-        jdText
-          .replace(/\s+/g, " ")
-          .trim();
+        parsedJD.text || "";
     }
 
     // =========================
-    // ATS ENGINE
+    // CLEAN TEXT
     // =========================
 
-    let atsScore = 0;
+    const normalize = (
+      text: string
+    ) => {
 
-    const matchedKeywords: string[] = [];
-    const missingKeywords: string[] = [];
-    const strengths: string[] = [];
-    const weaknesses: string[] = [];
-
-    const lowerResume =
-      resumeText.toLowerCase();
-
-    const lowerJD =
-      jobDescription.toLowerCase();
-
-    const keywordMap = {
-
-      react: [
-        "react",
-        "reactjs",
-        "react.js",
-      ],
-
-      "next.js": [
-        "next.js",
-        "nextjs",
-      ],
-
-      typescript: [
-        "typescript",
-      ],
-
-      javascript: [
-        "javascript",
-      ],
-
-      tailwind: [
-        "tailwind",
-      ],
-
-      "node.js": [
-        "node.js",
-        "nodejs",
-      ],
-
-      express: [
-        "express",
-      ],
-
-      mongodb: [
-        "mongodb",
-      ],
-
-      sql: [
-        "sql",
-        "mysql",
-        "postgresql",
-      ],
-
-      "rest api": [
-        "rest api",
-        "restful api",
-      ],
-
-      github: [
-        "github",
-        "git",
-      ],
-
-      docker: [
-        "docker",
-      ],
-
-      aws: [
-        "aws",
-        "azure",
-        "gcp",
-      ],
-
-      redis: [
-        "redis",
-      ],
-
-      python: [
-        "python",
-      ],
-
-      java: [
-        "java",
-      ],
-
-      ai: [
-        "ai",
-        "machine learning",
-        "tensorflow",
-        "keras",
-      ],
-
-      experience: [
-        "experience",
-        "internship",
-      ],
-
-      skills: [
-        "skills",
-      ],
-
-      leadership: [
-        "leadership",
-      ],
-
-      "problem solving": [
-        "problem solving",
-        "leetcode",
-        "codeforces",
-      ],
+      return text
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9\s]/g,
+          " "
+        );
     };
 
+    const resumeWords =
+      normalize(resumeText);
+
+    const jdWords =
+      normalize(jobDescription);
+
     // =========================
-    // KEYWORD MATCHING
+    // SKILL KEYWORDS
     // =========================
 
-    Object.entries(keywordMap)
-    .forEach(([mainKeyword, variants]) => {
+    const keywordMap = [
 
-      const resumeMatch =
-        variants.some((word) =>
-          lowerResume.includes(word)
-        );
+      "react",
+      "nextjs",
+      "typescript",
+      "javascript",
+      "nodejs",
+      "express",
+      "mongodb",
+      "sql",
+      "tailwind",
+      "docker",
+      "aws",
+      "redis",
+      "python",
+      "java",
+      "git",
+      "rest api",
+      "firebase",
+      "supabase",
+      "machine learning",
+      "ai",
+      "data structures",
+      "algorithms",
+      "problem solving",
+      "leadership",
+      "communication",
+      "teamwork",
+    ];
 
-      const jdMatch =
-        variants.some((word) =>
-          lowerJD.includes(word)
-        );
+    const matchedKeywords:
+      string[] = [];
 
-      if (resumeMatch) {
+    const missingKeywords:
+      string[] = [];
 
-        matchedKeywords.push(
-          mainKeyword
-        );
+    keywordMap.forEach(
+      (skill) => {
 
-        atsScore += 4;
+        const inResume =
+          resumeWords.includes(
+            skill
+          );
+
+        const inJD =
+          jdWords.includes(
+            skill
+          );
+
+        if (
+          inResume &&
+          inJD
+        ) {
+
+          matchedKeywords.push(
+            skill
+          );
+        }
+
+        if (
+          inJD &&
+          !inResume
+        ) {
+
+          missingKeywords.push(
+            skill
+          );
+        }
       }
+    );
 
-      if (jdMatch && !resumeMatch) {
+    // =========================
+    // ATS SCORE
+    // =========================
 
-        missingKeywords.push(
-          mainKeyword
-        );
-      }
-    });
+    const totalJDKeywords =
+      matchedKeywords.length +
+      missingKeywords.length;
+
+    const atsScore =
+      totalJDKeywords === 0
+        ? 50
+        : Math.round(
+
+            (
+              matchedKeywords.length /
+
+              totalJDKeywords
+            ) * 100
+          );
+
+    const jobMatch =
+      atsScore;
 
     // =========================
     // STRENGTHS
     // =========================
 
-    if (resumeText.length > 1000) {
+    const strengths:
+      string[] = [];
+
+    if (
+      matchedKeywords.length > 8
+    ) {
 
       strengths.push(
-        "Good resume content length"
-      );
-    }
-
-    if (matchedKeywords.length > 8) {
-
-      strengths.push(
-        "Strong technical keyword coverage"
+        "Strong technical skill match"
       );
     }
 
     if (
-      lowerResume.includes("project")
+      resumeText.length > 1500
+    ) {
+
+      strengths.push(
+        "Detailed resume content"
+      );
+    }
+
+    if (
+      resumeWords.includes(
+        "project"
+      )
     ) {
 
       strengths.push(
@@ -276,33 +238,55 @@ export async function POST(req: Request) {
       );
     }
 
+    if (
+      resumeWords.includes(
+        "internship"
+      )
+    ) {
+
+      strengths.push(
+        "Internship experience included"
+      );
+    }
+
     // =========================
     // WEAKNESSES
     // =========================
 
-    if (missingKeywords.length > 5) {
+    const weaknesses:
+      string[] = [];
+
+    if (
+      missingKeywords.length > 5
+    ) {
 
       weaknesses.push(
         "Missing important job keywords"
       );
     }
 
-    if (resumeText.length < 500) {
+    if (
+      resumeText.length < 800
+    ) {
 
       weaknesses.push(
-        "Resume content too short"
+        "Resume content is too short"
+      );
+    }
+
+    if (
+      !resumeWords.includes(
+        "achievement"
+      )
+    ) {
+
+      weaknesses.push(
+        "Achievements are not highlighted"
       );
     }
 
     // =========================
-    // FINAL SCORE
-    // =========================
-
-    atsScore =
-      Math.min(100, atsScore);
-
-    // =========================
-    // AI ANALYSIS
+    // AI FEEDBACK
     // =========================
 
     const completion =
@@ -311,7 +295,7 @@ export async function POST(req: Request) {
         model:
           "llama-3.1-8b-instant",
 
-        temperature: 0.4,
+        temperature: 0.5,
 
         messages: [
 
@@ -319,16 +303,20 @@ export async function POST(req: Request) {
             role: "system",
 
             content: `
-You are an ATS resume analyzer.
+You are an expert ATS analyzer and recruiter.
 
-Analyze the resume professionally.
+Analyze the resume against the job description.
 
-Give:
-- ATS feedback
-- improvements
-- missing skills
-- recruiter suggestions
-- resume optimization tips
+Return:
+1. ATS feedback
+2. Missing skills
+3. Resume improvements
+4. Strong points
+5. Weak points
+6. Better project wording
+7. Recruiter suggestions
+
+Keep response professional and structured.
 `,
           },
 
@@ -357,10 +345,16 @@ ${jobDescription}
     // =========================
 
     await supabase
-      .from("resume_analyses")
+      .from(
+        "resume_analyses"
+      )
       .insert({
 
-        ats_score: atsScore,
+        ats_score:
+          atsScore,
+
+        job_match:
+          jobMatch,
 
         matched_keywords:
           matchedKeywords,
@@ -386,6 +380,8 @@ ${jobDescription}
 
       atsScore,
 
+      jobMatch,
+
       matchedKeywords,
 
       missingKeywords,
@@ -397,7 +393,9 @@ ${jobDescription}
       aiFeedback,
     });
 
-  } catch (error: unknown) {
+  } catch (
+    error: unknown
+  ) {
 
     console.log(error);
 
