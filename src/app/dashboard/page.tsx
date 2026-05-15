@@ -1,163 +1,59 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-} from "docx";
-
-import { saveAs } from "file-saver";
+import { useState } from "react";
 
 export default function DashboardPage() {
 
-  // =========================
-  // STATES
-  // =========================
-
-  const [file, setFile] =
+  const [resumeFile, setResumeFile] =
     useState<File | null>(null);
 
   const [jdFile, setJdFile] =
     useState<File | null>(null);
 
-  const [jobDescription, setJobDescription] =
-    useState("");
-
-  const [analyzing, setAnalyzing] =
+  const [loading, setLoading] =
     useState(false);
-
-  const [rewriting, setRewriting] =
-    useState(false);
-
-  const [
-    generatingQuestions,
-    setGeneratingQuestions,
-  ] = useState(false);
 
   const [atsScore, setAtsScore] =
     useState(0);
 
-  const [jobMatchScore, setJobMatchScore] =
+  const [jobMatch, setJobMatch] =
     useState(0);
 
-  const [resumeLevel, setResumeLevel] =
+  const [aiSuggestions, setAiSuggestions] =
     useState("");
 
-  const [analysis, setAnalysis] =
+  const [interviewQuestions, setInterviewQuestions] =
     useState("");
 
-  const [
-    rewrittenResume,
-    setRewrittenResume,
-  ] = useState("");
-
-  const [
-    interviewQuestions,
-    setInterviewQuestions,
-  ] = useState("");
-
-  const [
-    matchedKeywords,
-    setMatchedKeywords,
-  ] = useState<string[]>([]);
-
-  const [
-    missingKeywords,
-    setMissingKeywords,
-  ] = useState<string[]>([]);
-
-  const [strengths, setStrengths] =
-    useState<string[]>([]);
-
-  const [weaknesses, setWeaknesses] =
-    useState<string[]>([]);
-
-  const [history, setHistory] =
-    useState<any[]>([]);
+  const [rewrittenResume, setRewrittenResume] =
+    useState("");
 
   // =========================
-  // FETCH HISTORY
-  // =========================
-
-  useEffect(() => {
-
-    fetchHistory();
-
-  }, []);
-
-  const fetchHistory = async () => {
-
-    try {
-
-      const response =
-        await fetch("/api/history");
-
-      const text =
-        await response.text();
-
-      if (!text) {
-
-        setHistory([]);
-
-        return;
-      }
-
-      const data =
-        JSON.parse(text);
-
-      if (data.error) {
-
-        console.log(data.error);
-
-        return;
-      }
-
-      setHistory(data);
-
-    } catch (error) {
-
-      console.log(error);
-    }
-  };
-
-  // =========================
-  // ANALYZE RESUME
+  // ANALYZE
   // =========================
 
   const analyzeResume =
     async () => {
 
-      if (!file) {
-
-        alert("Upload resume");
-
-        return;
-      }
-
       try {
 
-        setAnalyzing(true);
+        if (!resumeFile) {
+
+          alert(
+            "Please upload resume PDF"
+          );
+
+          return;
+        }
+
+        setLoading(true);
 
         const formData =
           new FormData();
 
         formData.append(
           "resume",
-          file
-        );
-
-        formData.append(
-          "jobDescription",
-          jobDescription
+          resumeFile
         );
 
         if (jdFile) {
@@ -172,694 +68,334 @@ export default function DashboardPage() {
           await fetch(
             "/api/upload",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
 
-        const result =
+        const data =
           await response.json();
 
-        if (result.error) {
-
-          alert(result.error);
-
-          return;
-        }
-
         setAtsScore(
-          result.atsScore
+          data.atsScore || 0
         );
 
-        setJobMatchScore(
-          result.jobMatchScore
+        setJobMatch(
+          data.jobMatch || 0
         );
 
-        setResumeLevel(
-          result.resumeLevel
+        setAiSuggestions(
+          data.aiFeedback || ""
         );
 
-        setAnalysis(
-          result.analysis
+      } catch (error) {
+
+        console.log(error);
+
+        alert(
+          "Analyze failed"
         );
-
-        setMatchedKeywords(
-          result.matchedKeywords
-        );
-
-        setMissingKeywords(
-          result.missingKeywords
-        );
-
-        setStrengths(
-          result.strengths
-        );
-
-        setWeaknesses(
-          result.weaknesses
-        );
-
-        fetchHistory();
-
-      } catch (error: any) {
-
-        alert(error.message);
 
       } finally {
 
-        setAnalyzing(false);
+        setLoading(false);
       }
     };
 
   // =========================
-  // REWRITE RESUME
+  // INTERVIEW
   // =========================
 
-  const rewriteResume =
+  const generateInterviewQuestions =
     async () => {
-
-      if (!file) {
-
-        alert("Upload resume");
-
-        return;
-      }
 
       try {
 
-        setRewriting(true);
+        if (!resumeFile) {
+
+          alert(
+            "Please upload resume PDF"
+          );
+
+          return;
+        }
+
+        setLoading(true);
 
         const formData =
           new FormData();
 
         formData.append(
           "resume",
-          file
+          resumeFile
         );
 
+        if (jdFile) {
+
+          formData.append(
+            "jdFile",
+            jdFile
+          );
+        }
+
+        const response =
+          await fetch(
+            "/api/interview",
+            {
+
+              method: "POST",
+
+              body: formData,
+            }
+          );
+
+        const data =
+          await response.json();
+
+        setInterviewQuestions(
+          data.interviewQuestions || ""
+        );
+
+      } catch (error) {
+
+        console.log(error);
+
+        alert(
+          "Interview generation failed"
+        );
+
+      } finally {
+
+        setLoading(false);
+      }
+    };
+
+  // =========================
+  // REWRITE
+  // =========================
+
+  const rewriteResume =
+    async () => {
+
+      try {
+
+        if (!resumeFile) {
+
+          alert(
+            "Please upload resume PDF"
+          );
+
+          return;
+        }
+
+        setLoading(true);
+
+        const formData =
+          new FormData();
+
         formData.append(
-          "jobDescription",
-          jobDescription
+          "resume",
+          resumeFile
         );
 
         const response =
           await fetch(
             "/api/rewrite",
             {
+
               method: "POST",
+
               body: formData,
             }
           );
 
-        const result =
+        const data =
           await response.json();
-
-        if (result.error) {
-
-          alert(result.error);
-
-          return;
-        }
 
         setRewrittenResume(
-          result.rewrittenResume
+          data.rewrittenResume || ""
         );
 
-      } catch (error: any) {
+      } catch (error) {
 
-        alert(error.message);
+        console.log(error);
+
+        alert(
+          "Rewrite failed"
+        );
 
       } finally {
 
-        setRewriting(false);
+        setLoading(false);
       }
-    };
-
-  // =========================
-  // INTERVIEW QUESTIONS
-  // =========================
-
-  const generateQuestions =
-    async () => {
-
-      if (!file) {
-
-        alert("Upload resume");
-
-        return;
-      }
-
-      try {
-
-        setGeneratingQuestions(
-          true
-        );
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "resume",
-          file
-        );
-
-        formData.append(
-          "jobDescription",
-          jobDescription
-        );
-
-        const response =
-          await fetch(
-            "/api/interview",
-            {
-              method: "POST",
-              body: formData,
-            }
-          );
-
-        const result =
-          await response.json();
-
-        if (result.error) {
-
-          alert(result.error);
-
-          return;
-        }
-
-        setInterviewQuestions(
-          result.questions
-        );
-
-      } catch (error: any) {
-
-        alert(error.message);
-
-      } finally {
-
-        setGeneratingQuestions(
-          false
-        );
-      }
-    };
-
-  // =========================
-  // DOWNLOAD PDF
-  // =========================
-
-  const downloadPDF =
-    async () => {
-
-      const input =
-        document.getElementById(
-          "rewrite-section"
-        );
-
-      if (!input) return;
-
-      const canvas =
-        await html2canvas(
-          input
-        );
-
-      const imgData =
-        canvas.toDataURL(
-          "image/png"
-        );
-
-      const pdf =
-        new jsPDF();
-
-      const pdfWidth =
-        pdf.internal.pageSize.getWidth();
-
-      const pdfHeight =
-        (
-          canvas.height *
-          pdfWidth
-        ) / canvas.width;
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdfWidth,
-        pdfHeight
-      );
-
-      pdf.save(
-        "rewritten-resume.pdf"
-      );
-    };
-
-  // =========================
-  // DOWNLOAD DOCX
-  // =========================
-
-  const downloadDOCX =
-    async () => {
-
-      const doc =
-        new Document({
-
-          sections: [
-            {
-              properties: {},
-
-              children: [
-
-                new Paragraph({
-
-                  children: [
-
-                    new TextRun({
-
-                      text:
-                        rewrittenResume,
-
-                      size: 24,
-                    }),
-                  ],
-                }),
-              ],
-            },
-          ],
-        });
-
-      const blob =
-        await Packer.toBlob(
-          doc
-        );
-
-      saveAs(
-        blob,
-        "rewritten-resume.docx"
-      );
     };
 
   return (
 
-    <div
-      style={{
-        background: "#020617",
-        minHeight: "100vh",
-        color: "white",
-        padding: "30px",
-      }}
-    >
+    <div className="min-h-screen bg-[#020617] text-white p-8">
 
-      {/* TITLE */}
-
-      <h1
-        style={{
-          fontSize: "70px",
-          fontWeight: "bold",
-          marginBottom: "30px",
-        }}
-      >
-        AI Resume Analyzer
+      <h1 className="text-5xl font-bold mb-10">
+        AI Resume Assistant
       </h1>
 
-      {/* UPLOAD SECTION */}
+      {/* Upload Section */}
 
-      <div
-        style={{
-          background: "#111827",
-          padding: "30px",
-          borderRadius: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div className="bg-[#0f172a] p-8 rounded-3xl mb-8">
 
-        <h2>
-          Upload Resume PDF
-        </h2>
+        <div className="grid md:grid-cols-2 gap-8">
 
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={(e) => {
+          {/* Resume Upload */}
 
-            if (
-              e.target.files &&
-              e.target.files[0]
-            ) {
+          <div>
 
-              setFile(
-                e.target.files[0]
-              );
+            <label className="block text-xl mb-4">
+              Upload Resume PDF
+            </label>
+
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) =>
+                setResumeFile(
+                  e.target.files?.[0] || null
+                )
+              }
+              className="bg-white text-black p-4 rounded-xl w-full"
+            />
+          </div>
+
+          {/* JD Upload */}
+
+          <div>
+
+            <label className="block text-xl mb-4">
+              Upload Job Description PDF
+            </label>
+
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) =>
+                setJdFile(
+                  e.target.files?.[0] || null
+                )
+              }
+              className="bg-white text-black p-4 rounded-xl w-full"
+            />
+          </div>
+        </div>
+
+        {/* Buttons */}
+
+        <div className="flex flex-wrap gap-6 mt-10">
+
+          <button
+            onClick={analyzeResume}
+            disabled={loading}
+            className="bg-cyan-500 hover:bg-cyan-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Analyze Resume
+          </button>
+
+          <button
+            onClick={
+              generateInterviewQuestions
             }
-          }}
-        />
+            disabled={loading}
+            className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Interview Questions
+          </button>
 
-        <br />
-        <br />
+          <button
+            onClick={rewriteResume}
+            disabled={loading}
+            className="bg-orange-500 hover:bg-orange-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Rewrite Resume
+          </button>
+        </div>
 
-        <h2>
-          Paste Job Description
-        </h2>
+        {/* Loading */}
 
-        <textarea
-          placeholder="Paste Job Description"
-          value={jobDescription}
-          onChange={(e) =>
-            setJobDescription(
-              e.target.value
-            )
-          }
-          rows={10}
-          style={{
-            width: "100%",
-            padding: "15px",
-            borderRadius: "10px",
-            background: "#020617",
-            color: "white",
-            border:
-              "1px solid #334155",
-            outline: "none",
-            fontSize: "16px",
-            marginBottom: "20px",
-          }}
-        />
+        {loading && (
 
-        <h2>
-          OR Upload Job Description PDF
-        </h2>
-
-        <input
-          type="file"
-          accept=".pdf"
-          onChange={(e) => {
-
-            if (
-              e.target.files &&
-              e.target.files[0]
-            ) {
-
-              setJdFile(
-                e.target.files[0]
-              );
-            }
-          }}
-        />
-
-        <br />
-        <br />
-
-        {/* BUTTONS */}
-
-        <button
-          onClick={analyzeResume}
-          disabled={analyzing}
-          style={{
-            background: "#06b6d4",
-            color: "white",
-            border: "none",
-            padding: "18px 40px",
-            borderRadius: "12px",
-            fontSize: "20px",
-            cursor: "pointer",
-          }}
-        >
-
-          {analyzing
-            ? "Analyzing..."
-            : "Analyze Resume"}
-
-        </button>
-
-        <button
-          onClick={rewriteResume}
-          disabled={rewriting}
-          style={{
-            background: "#22c55e",
-            color: "white",
-            border: "none",
-            padding: "18px 40px",
-            borderRadius: "12px",
-            fontSize: "20px",
-            cursor: "pointer",
-            marginLeft: "15px",
-          }}
-        >
-
-          {rewriting
-            ? "Rewriting..."
-            : "Rewrite Resume"}
-
-        </button>
-
-        <button
-          onClick={
-            generateQuestions
-          }
-          disabled={
-            generatingQuestions
-          }
-          style={{
-            background: "#f59e0b",
-            color: "white",
-            border: "none",
-            padding: "18px 40px",
-            borderRadius: "12px",
-            fontSize: "20px",
-            cursor: "pointer",
-            marginLeft: "15px",
-          }}
-        >
-
-          {generatingQuestions
-            ? "Generating..."
-            : "Interview Questions"}
-
-        </button>
+          <p className="mt-6 text-cyan-400 text-lg">
+            Processing...
+          </p>
+        )}
       </div>
 
-      {/* SCORES */}
+      {/* Scores */}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1fr 1fr 1fr",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
+      <div className="grid md:grid-cols-2 gap-8 mb-8">
 
-        <div
-          style={{
-            background: "#111827",
-            padding: "25px",
-            borderRadius: "20px",
-          }}
-        >
-          <h2>ATS Score</h2>
+        <div className="bg-[#0f172a] p-8 rounded-3xl">
 
-          <h1
-            style={{
-              fontSize: "60px",
-              color: "#22d3ee",
-            }}
-          >
+          <h2 className="text-3xl mb-6">
+            ATS Score
+          </h2>
+
+          <div className="text-7xl text-cyan-400 font-bold">
             {atsScore}%
-          </h1>
+          </div>
         </div>
 
-        <div
-          style={{
-            background: "#111827",
-            padding: "25px",
-            borderRadius: "20px",
-          }}
-        >
-          <h2>Job Match</h2>
+        <div className="bg-[#0f172a] p-8 rounded-3xl">
 
-          <h1
-            style={{
-              fontSize: "60px",
-              color: "#4ade80",
-            }}
-          >
-            {jobMatchScore}%
-          </h1>
-        </div>
+          <h2 className="text-3xl mb-6">
+            Job Match
+          </h2>
 
-        <div
-          style={{
-            background: "#111827",
-            padding: "25px",
-            borderRadius: "20px",
-          }}
-        >
-          <h2>Resume Level</h2>
-
-          <h1
-            style={{
-              fontSize: "32px",
-              color: "#facc15",
-            }}
-          >
-            {resumeLevel}
-          </h1>
+          <div className="text-7xl text-green-400 font-bold">
+            {jobMatch}%
+          </div>
         </div>
       </div>
 
-      {/* AI SUGGESTIONS */}
+      {/* RESULTS */}
 
-      <div
-        style={{
-          background: "#0f172a",
-          padding: "35px",
-          borderRadius: "20px",
-          marginBottom: "30px",
-          border:
-            "2px solid #1e293b",
-        }}
-      >
+      <div className="grid lg:grid-cols-3 gap-6">
 
-        <h2
-          style={{
-            background: "#111827",
-            padding: "15px 20px",
-            borderRadius: "12px",
-            color: "#22d3ee",
-            fontSize: "28px",
-            marginBottom: "25px",
-          }}
-        >
-          AI Suggestions
-        </h2>
+        {/* AI */}
 
-        <div
-          style={{
-            background: "#020617",
-            padding: "25px",
-            borderRadius: "15px",
-            whiteSpace: "pre-wrap",
-            lineHeight: "1.9",
-          }}
-        >
-          {analysis}
-        </div>
-      </div>
+        <div className="bg-[#0f172a] p-6 rounded-3xl h-[700px] overflow-y-auto">
 
-      {/* AI REWRITTEN RESUME */}
+          <div className="text-cyan-400 text-2xl font-bold mb-6">
+            Suggestions
+          </div>
 
-      <div
-        id="rewrite-section"
-        style={{
-          background: "#0f172a",
-          padding: "35px",
-          borderRadius: "20px",
-          marginBottom: "30px",
-          border:
-            "2px solid #1e293b",
-        }}
-      >
-
-        <h2
-          style={{
-            background: "#111827",
-            padding: "15px 20px",
-            borderRadius: "12px",
-            color: "#4ade80",
-            fontSize: "28px",
-            marginBottom: "25px",
-          }}
-        >
-          AI Rewritten Resume
-        </h2>
-
-        <div
-          style={{
-            background: "#020617",
-            padding: "25px",
-            borderRadius: "15px",
-            whiteSpace: "pre-wrap",
-            lineHeight: "1.9",
-          }}
-        >
-          {rewrittenResume}
+          <div className="whitespace-pre-wrap leading-8 text-gray-300">
+            {aiSuggestions}
+          </div>
         </div>
 
-        {/* DOWNLOAD BUTTONS */}
+        {/* INTERVIEW */}
 
-        <div
-          style={{
-            marginTop: "25px",
-          }}
-        >
+        <div className="bg-[#0f172a] p-6 rounded-3xl h-[700px] overflow-y-auto">
 
-          <button
-            onClick={downloadPDF}
-            style={{
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              padding: "14px 30px",
-              borderRadius: "10px",
-              cursor: "pointer",
-              marginRight: "15px",
-            }}
-          >
-            Download PDF
-          </button>
+          <div className="text-green-400 text-2xl font-bold mb-6">
+            Interview
+          </div>
 
-          <button
-            onClick={downloadDOCX}
-            style={{
-              background: "#7c3aed",
-              color: "white",
-              border: "none",
-              padding: "14px 30px",
-              borderRadius: "10px",
-              cursor: "pointer",
-            }}
-          >
-            Download DOCX
-          </button>
+          <div className="whitespace-pre-wrap leading-8 text-gray-300">
+            {interviewQuestions}
+          </div>
         </div>
-      </div>
 
-      {/* INTERVIEW QUESTIONS */}
+        {/* REWRITE */}
 
-      <div
-        style={{
-          background: "#0f172a",
-          padding: "35px",
-          borderRadius: "20px",
-          marginBottom: "30px",
-          border:
-            "2px solid #1e293b",
-        }}
-      >
+        <div className="bg-[#0f172a] p-6 rounded-3xl h-[700px] overflow-y-auto">
 
-        <h2
-          style={{
-            background: "#111827",
-            padding: "15px 20px",
-            borderRadius: "12px",
-            color: "#f59e0b",
-            fontSize: "28px",
-            marginBottom: "25px",
-          }}
-        >
-          AI Interview Questions
-        </h2>
+          <div className="text-orange-400 text-2xl font-bold mb-6">
+            Rewrite
+          </div>
 
-        <div
-          style={{
-            background: "#020617",
-            padding: "25px",
-            borderRadius: "15px",
-            whiteSpace: "pre-wrap",
-            lineHeight: "1.9",
-            color: "white",
-          }}
-        >
-          {interviewQuestions}
+          <div className="whitespace-pre-wrap leading-8 text-gray-300">
+            {rewrittenResume}
+          </div>
         </div>
       </div>
     </div>
