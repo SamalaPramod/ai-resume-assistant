@@ -90,49 +90,38 @@ export default function DashboardPage() {
 
         console.log(data);
 
+        // =========================
+        // UPDATE STATES
+        // =========================
+
         setAtsScore(
+
           Number(
             data.atsScore || 0
           )
         );
 
         setJobMatch(
+
           Number(
             data.jobMatch || 0
           )
         );
 
-        setAiSuggestions(
-          data.aiFeedback ||
-          "No AI suggestions generated"
+        setResumeLevel(
+
+          data.resumeLevel ||
+          "Beginner"
         );
 
-        // =========================
-        // RESUME LEVEL
-        // =========================
+        setAiSuggestions(
 
-        if (
-          Number(data.atsScore) >= 85
-        ) {
+          data.aiFeedback ||
 
-          setResumeLevel(
-            "Advanced"
-          );
+          "No suggestions generated"
+        );
 
-        } else if (
-          Number(data.atsScore) >= 70
-        ) {
-
-          setResumeLevel(
-            "Intermediate"
-          );
-
-        } else {
-
-          setResumeLevel(
-            "Beginner"
-          );
-        }
+        // OPEN AI SECTION
 
         setActiveSection(
           "suggestions"
@@ -444,7 +433,7 @@ export default function DashboardPage() {
 
       {/* SECTION BUTTONS */}
 
-      <div className="flex gap-4 mb-8">
+      <div className="flex gap-4 mb-8 flex-wrap">
 
         <button
           onClick={() =>
