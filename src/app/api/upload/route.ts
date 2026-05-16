@@ -1,10 +1,14 @@
 import OpenAI from "openai";
 import pdfParse from "pdf-parse";
+import natural from "natural";
 
 const client = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
   baseURL: "https://api.groq.com/openai/v1",
 });
+
+const tokenizer =
+  new natural.WordTokenizer();
 
 export async function POST(req: Request) {
 
@@ -22,9 +26,7 @@ export async function POST(req: Request) {
     if (!resumeFile) {
 
       return Response.json({
-
-        error:
-          "Resume missing",
+        error: "Resume missing",
       });
     }
 
@@ -36,14 +38,10 @@ export async function POST(req: Request) {
       await resumeFile.arrayBuffer();
 
     const resumeBuffer =
-      Buffer.from(
-        resumeBytes
-      );
+      Buffer.from(resumeBytes);
 
     const parsedResume =
-      await pdfParse(
-        resumeBuffer
-      );
+      await pdfParse(resumeBuffer);
 
     let resumeText =
       parsedResume.text || "";
@@ -52,11 +50,11 @@ export async function POST(req: Request) {
       resumeText
         .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
-        .replace(/[^\x20-\x7E]/g, "")
+        .toLowerCase()
         .trim();
 
     // =========================
-    // JD PDF
+    // JOB DESCRIPTION PDF
     // =========================
 
     let jdText = "";
@@ -67,14 +65,10 @@ export async function POST(req: Request) {
         await jdFile.arrayBuffer();
 
       const jdBuffer =
-        Buffer.from(
-          jdBytes
-        );
+        Buffer.from(jdBytes);
 
       const parsedJD =
-        await pdfParse(
-          jdBuffer
-        );
+        await pdfParse(jdBuffer);
 
       jdText =
         parsedJD.text || "";
@@ -83,268 +77,187 @@ export async function POST(req: Request) {
         jdText
           .replace(/\n/g, " ")
           .replace(/\s+/g, " ")
-          .replace(/[^\x20-\x7E]/g, "")
+          .toLowerCase()
           .trim();
     }
 
     // =========================
-    // LOWERCASE
+    // TOKENIZATION
     // =========================
 
-    const lowerResume =
-      resumeText.toLowerCase();
+    const resumeTokens =
+      tokenizer.tokenize(
+        resumeText
+      );
 
-    const lowerJD =
-      jdText.toLowerCase();
+    const jdTokens =
+      tokenizer.tokenize(
+        jdText
+      );
 
     // =========================
-    // KEYWORDS
+    // IMPORTANT SKILLS
     // =========================
 
-    const importantKeywords = [
-
-      // Languages
+    const importantSkills = [
 
       "python",
       "java",
       "javascript",
       "typescript",
-      "c++",
-      "sql",
-
-      // AI / ML
-
-      "machine learning",
-      "deep learning",
-      "nlp",
-      "bert",
-      "tensorflow",
-      "pytorch",
-      "llm",
-      "langchain",
-      "rag",
-      "vector",
-
-      // Web
-
       "react",
       "nextjs",
       "node",
       "express",
-      "api",
-      "rest api",
-
-      // Databases
-
-      "mysql",
+      "sql",
       "mongodb",
+      "mysql",
       "postgresql",
-
-      // Cloud
-
-      "aws",
+      "machine",
+      "learning",
+      "deep",
+      "nlp",
+      "bert",
+      "tensorflow",
+      "pytorch",
+      "api",
       "docker",
-      "kubernetes",
-
-      // Concepts
-
-      "data structures",
+      "aws",
+      "langchain",
+      "rag",
+      "vector",
       "algorithms",
-      "problem solving",
-      "system design",
-
-      // Resume Sections
-
-      "project",
-      "experience",
-      "skills",
-      "education",
+      "data",
+      "structures",
+      "problem",
+      "solving",
     ];
 
     // =========================
     // MATCHING
     // =========================
 
-    let matchedKeywords = 0;
+    let matchedSkills: string[] = [];
 
-    let missingKeywords: string[] = [];
+    let missingSkills: string[] = [];
 
-    importantKeywords.forEach(
+    importantSkills.forEach((skill) => {
 
-      (keyword) => {
+      const jdHasSkill =
+        jdTokens.includes(skill);
 
-        const inJD =
-          lowerJD.includes(
-            keyword
-          );
+      const resumeHasSkill =
+        resumeTokens.includes(skill);
 
-        const inResume =
-          lowerResume.includes(
-            keyword
-          );
+      if (
+        jdHasSkill &&
+        resumeHasSkill
+      ) {
 
-        if (
-          inJD &&
-          inResume
-        ) {
+        matchedSkills.push(skill);
 
-          matchedKeywords++;
+      } else if (
+        jdHasSkill &&
+        !resumeHasSkill
+      ) {
 
-        } else if (
-          inJD &&
-          !inResume
-        ) {
-
-          missingKeywords.push(
-            keyword
-          );
-        }
+        missingSkills.push(skill);
       }
-    );
+    });
 
     // =========================
-    // JOB MATCH
+    // JOB MATCH SCORE
     // =========================
 
-    const totalJDKeywords =
-      importantKeywords.filter(
-
-        (keyword) =>
-
-          lowerJD.includes(
-            keyword
-          )
-      ).length;
+    const totalRequiredSkills =
+      matchedSkills.length +
+      missingSkills.length;
 
     let jobMatch =
-      totalJDKeywords > 0
+      totalRequiredSkills > 0
 
         ? Math.round(
-
             (
-              matchedKeywords /
-
-              totalJDKeywords
+              matchedSkills.length /
+              totalRequiredSkills
             ) * 100
           )
 
         : 0;
 
     // =========================
-    // ATS SCORE
+    // SECTION ANALYSIS
+    // =========================
+
+    let sectionScore = 0;
+
+    const importantSections = [
+
+      "skills",
+      "projects",
+      "experience",
+      "education",
+      "certification",
+      "internship",
+    ];
+
+    importantSections.forEach((section) => {
+
+      if (
+        resumeText.includes(section)
+      ) {
+
+        sectionScore += 4;
+      }
+    });
+
+    // =========================
+    // PROJECT QUALITY
+    // =========================
+
+    let projectScore = 0;
+
+    const projectKeywords = [
+
+      "built",
+      "developed",
+      "implemented",
+      "designed",
+      "optimized",
+      "deployed",
+      "integrated",
+      "created",
+    ];
+
+    projectKeywords.forEach((word) => {
+
+      if (
+        resumeText.includes(word)
+      ) {
+
+        projectScore += 2;
+      }
+    });
+
+    // =========================
+    // FINAL ATS SCORE
     // =========================
 
     let atsScore =
-      jobMatch;
 
-    // =========================
-    // BONUS POINTS
-    // =========================
+      Math.round(
 
-    const bonusKeywords = [
-
-      "project",
-      "experience",
-      "skills",
-      "education",
-      "achievement",
-      "internship",
-      "certification",
-    ];
-
-    bonusKeywords.forEach(
-
-      (word) => {
-
-        if (
-          lowerResume.includes(
-            word
-          )
-        ) {
-
-          atsScore += 3;
-        }
-      }
-    );
-
-    // =========================
-    // AI/ML BONUS
-    // =========================
-
-    const aiKeywords = [
-
-      "bert",
-      "nlp",
-      "tensorflow",
-      "pytorch",
-      "machine learning",
-      "deep learning",
-    ];
-
-    aiKeywords.forEach(
-
-      (word) => {
-
-        if (
-          lowerResume.includes(
-            word
-          )
-        ) {
-
-          atsScore += 2;
-        }
-      }
-    );
-
-    // =========================
-    // PENALTIES
-    // =========================
-
-    if (
-      !lowerResume.includes(
-        "project"
-      )
-    ) {
-
-      atsScore -= 10;
-    }
-
-    if (
-      !lowerResume.includes(
-        "skills"
-      )
-    ) {
-
-      atsScore -= 10;
-    }
-
-    if (
-      resumeText.length < 1200
-    ) {
-
-      atsScore -= 10;
-    }
-
-    // =========================
-    // LIMITS
-    // =========================
-
-    atsScore =
-      Math.max(
-        20,
-        Math.min(
-          atsScore,
-          100
+        (
+          jobMatch * 0.55 +
+          sectionScore * 1.5 +
+          projectScore * 1.2
         )
       );
 
-    jobMatch =
+    atsScore =
       Math.max(
-        0,
-        Math.min(
-          jobMatch,
-          100
-        )
+        25,
+        Math.min(atsScore, 100)
       );
 
     // =========================
@@ -354,16 +267,12 @@ export async function POST(req: Request) {
     let resumeLevel =
       "Beginner";
 
-    if (
-      atsScore >= 85
-    ) {
+    if (atsScore >= 85) {
 
       resumeLevel =
         "Advanced";
 
-    } else if (
-      atsScore >= 70
-    ) {
+    } else if (atsScore >= 70) {
 
       resumeLevel =
         "Intermediate";
@@ -387,21 +296,16 @@ export async function POST(req: Request) {
             role: "system",
 
             content: `
-You are an expert ATS scanner and recruiter.
+You are a professional ATS scanner and recruiter.
 
 Analyze:
-- ATS optimization
-- technical skills
-- recruiter readability
-- missing skills
-- project quality
-- resume structure
-- improvements
-
-Provide:
 - strengths
 - weaknesses
-- detailed suggestions
+- recruiter readability
+- ATS optimization
+- missing skills
+- project quality
+- improvement suggestions
 `,
           },
 
@@ -417,9 +321,13 @@ JOB DESCRIPTION:
 
 ${jdText}
 
-MISSING KEYWORDS:
+MATCHED SKILLS:
 
-${missingKeywords.join(", ")}
+${matchedSkills.join(", ")}
+
+MISSING SKILLS:
+
+${missingSkills.join(", ")}
 `,
           },
         ],
@@ -441,9 +349,9 @@ ${missingKeywords.join(", ")}
 
       resumeLevel,
 
-      matchedKeywords,
+      matchedSkills,
 
-      missingKeywords,
+      missingSkills,
 
       aiFeedback,
     });
@@ -456,9 +364,7 @@ ${missingKeywords.join(", ")}
 
       error:
         error instanceof Error
-
           ? error.message
-
           : "Analyze failed",
     });
   }
