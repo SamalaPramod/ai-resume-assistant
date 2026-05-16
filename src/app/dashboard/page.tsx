@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 
+import {
+  CircularProgressbar,
+  buildStyles,
+} from "react-circular-progressbar";
+
+import "react-circular-progressbar/dist/styles.css";
+
 export default function DashboardPage() {
 
   // =========================
@@ -39,6 +46,12 @@ export default function DashboardPage() {
     useState("suggestions");
 
   const [scoreBreakdown, setScoreBreakdown] =
+    useState<string[]>([]);
+
+  const [matchedSkills, setMatchedSkills] =
+    useState<string[]>([]);
+
+  const [missingSkills, setMissingSkills] =
     useState<string[]>([]);
 
   // =========================
@@ -91,41 +104,38 @@ export default function DashboardPage() {
         const data =
           await response.json();
 
-        console.log(data);
-
-        // =========================
-        // UPDATE STATES
-        // =========================
-
         setAtsScore(
-
           Number(
             data.atsScore || 0
           )
         );
 
         setJobMatch(
-
           Number(
             data.jobMatch || 0
           )
         );
 
         setResumeLevel(
-
           data.resumeLevel ||
           "Beginner"
         );
 
         setAiSuggestions(
-
           data.aiFeedback ||
-
           "No suggestions generated"
         );
 
         setScoreBreakdown(
           data.scoreBreakdown || []
+        );
+
+        setMatchedSkills(
+          data.matchedSkills || []
+        );
+
+        setMissingSkills(
+          data.missingSkills || []
         );
 
         setActiveSection(
@@ -188,12 +198,8 @@ export default function DashboardPage() {
         const data =
           await response.json();
 
-        console.log(data);
-
         setRewrittenResume(
-
           data.rewrittenResume ||
-
           "No rewritten resume generated"
         );
 
@@ -265,12 +271,8 @@ export default function DashboardPage() {
         const data =
           await response.json();
 
-        console.log(data);
-
         setInterviewQuestions(
-
           data.interviewQuestions ||
-
           "No interview questions generated"
         );
 
@@ -293,6 +295,36 @@ export default function DashboardPage() {
     };
 
   // =========================
+  // DOWNLOAD HELPERS
+  // =========================
+
+  const downloadTextFile = (
+    content: string,
+    filename: string
+  ) => {
+
+    const blob =
+      new Blob(
+        [content],
+        {
+          type: "text/plain",
+        }
+      );
+
+    const url =
+      URL.createObjectURL(blob);
+
+    const a =
+      document.createElement("a");
+
+    a.href = url;
+
+    a.download = filename;
+
+    a.click();
+  };
+
+  // =========================
   // UI
   // =========================
 
@@ -306,13 +338,13 @@ export default function DashboardPage() {
         AI Resume Assistant
       </h1>
 
-      {/* UPLOAD SECTION */}
+      {/* UPLOAD */}
 
       <div className="bg-[#0f172a] rounded-3xl p-8 mb-8">
 
         <div className="grid md:grid-cols-2 gap-8">
 
-          {/* Resume Upload */}
+          {/* RESUME */}
 
           <div>
 
@@ -332,7 +364,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* JD Upload */}
+          {/* JD */}
 
           <div>
 
@@ -398,35 +430,59 @@ export default function DashboardPage() {
 
         {/* ATS */}
 
-        <div className="bg-[#0f172a] rounded-3xl p-8">
+        <div className="bg-[#0f172a] rounded-3xl p-8 flex flex-col items-center">
 
-          <h2 className="text-3xl mb-6">
+          <h2 className="text-3xl mb-8">
             ATS Score
           </h2>
 
-          <div className="text-7xl text-cyan-400 font-bold">
-            {atsScore}%
+          <div className="w-44 h-44">
+
+            <CircularProgressbar
+              value={atsScore}
+              text={`${atsScore}%`}
+              styles={buildStyles({
+
+                textColor: "#22d3ee",
+
+                pathColor: "#22d3ee",
+
+                trailColor: "#1e293b",
+              })}
+            />
           </div>
         </div>
 
         {/* JOB MATCH */}
 
-        <div className="bg-[#0f172a] rounded-3xl p-8">
+        <div className="bg-[#0f172a] rounded-3xl p-8 flex flex-col items-center">
 
-          <h2 className="text-3xl mb-6">
+          <h2 className="text-3xl mb-8">
             Job Match
           </h2>
 
-          <div className="text-7xl text-green-400 font-bold">
-            {jobMatch}%
+          <div className="w-44 h-44">
+
+            <CircularProgressbar
+              value={jobMatch}
+              text={`${jobMatch}%`}
+              styles={buildStyles({
+
+                textColor: "#4ade80",
+
+                pathColor: "#4ade80",
+
+                trailColor: "#1e293b",
+              })}
+            />
           </div>
         </div>
 
         {/* LEVEL */}
 
-        <div className="bg-[#0f172a] rounded-3xl p-8">
+        <div className="bg-[#0f172a] rounded-3xl p-8 flex flex-col justify-center items-center">
 
-          <h2 className="text-3xl mb-6">
+          <h2 className="text-3xl mb-8">
             Resume Level
           </h2>
 
@@ -460,7 +516,60 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* SECTION BUTTONS */}
+      {/* MATCHED + MISSING */}
+
+      <div className="grid md:grid-cols-2 gap-6 mb-8">
+
+        {/* MATCHED */}
+
+        <div className="bg-[#0f172a] rounded-3xl p-8">
+
+          <h2 className="text-3xl text-green-400 mb-6">
+            Matched Skills
+          </h2>
+
+          <div className="flex flex-wrap gap-3">
+
+            {matchedSkills.map(
+              (skill, index) => (
+
+                <div
+                  key={index}
+                  className="bg-green-500/20 text-green-300 px-4 py-2 rounded-xl"
+                >
+                  {skill}
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
+        {/* MISSING */}
+
+        <div className="bg-[#0f172a] rounded-3xl p-8">
+
+          <h2 className="text-3xl text-red-400 mb-6">
+            Missing Skills
+          </h2>
+
+          <div className="flex flex-wrap gap-3">
+
+            {missingSkills.map(
+              (skill, index) => (
+
+                <div
+                  key={index}
+                  className="bg-red-500/20 text-red-300 px-4 py-2 rounded-xl"
+                >
+                  {skill}
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* TABS */}
 
       <div className="flex gap-4 mb-8 flex-wrap">
 
@@ -517,7 +626,7 @@ export default function DashboardPage() {
 
       <div className="bg-[#0f172a] rounded-3xl p-8 min-h-[600px]">
 
-        {/* AI Suggestions */}
+        {/* AI */}
 
         {activeSection ===
           "suggestions" && (
@@ -531,10 +640,22 @@ export default function DashboardPage() {
             <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
               {aiSuggestions}
             </div>
+
+            <button
+              onClick={() =>
+                downloadTextFile(
+                  aiSuggestions,
+                  "ai_suggestions.txt"
+                )
+              }
+              className="mt-6 bg-cyan-500 hover:bg-cyan-600 px-6 py-3 rounded-xl"
+            >
+              Download Suggestions
+            </button>
           </div>
         )}
 
-        {/* Rewrite */}
+        {/* REWRITE */}
 
         {activeSection ===
           "rewrite" && (
@@ -548,10 +669,22 @@ export default function DashboardPage() {
             <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
               {rewrittenResume}
             </div>
+
+            <button
+              onClick={() =>
+                downloadTextFile(
+                  rewrittenResume,
+                  "rewritten_resume.txt"
+                )
+              }
+              className="mt-6 bg-green-500 hover:bg-green-600 px-6 py-3 rounded-xl"
+            >
+              Download Resume
+            </button>
           </div>
         )}
 
-        {/* Interview */}
+        {/* INTERVIEW */}
 
         {activeSection ===
           "interview" && (
@@ -565,6 +698,18 @@ export default function DashboardPage() {
             <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
               {interviewQuestions}
             </div>
+
+            <button
+              onClick={() =>
+                downloadTextFile(
+                  interviewQuestions,
+                  "interview_questions.txt"
+                )
+              }
+              className="mt-6 bg-orange-500 hover:bg-orange-600 px-6 py-3 rounded-xl"
+            >
+              Download Questions
+            </button>
           </div>
         )}
       </div>
