@@ -22,7 +22,9 @@ export async function POST(req: Request) {
     if (!resumeFile) {
 
       return Response.json({
-        error: "Resume missing",
+
+        error:
+          "Resume missing",
       });
     }
 
@@ -34,10 +36,14 @@ export async function POST(req: Request) {
       await resumeFile.arrayBuffer();
 
     const resumeBuffer =
-      Buffer.from(resumeBytes);
+      Buffer.from(
+        resumeBytes
+      );
 
     const parsedResume =
-      await pdfParse(resumeBuffer);
+      await pdfParse(
+        resumeBuffer
+      );
 
     let resumeText =
       parsedResume.text || "";
@@ -50,7 +56,7 @@ export async function POST(req: Request) {
         .trim();
 
     // =========================
-    // JOB DESCRIPTION PDF
+    // JD PDF
     // =========================
 
     let jdText = "";
@@ -61,10 +67,14 @@ export async function POST(req: Request) {
         await jdFile.arrayBuffer();
 
       const jdBuffer =
-        Buffer.from(jdBytes);
+        Buffer.from(
+          jdBytes
+        );
 
       const parsedJD =
-        await pdfParse(jdBuffer);
+        await pdfParse(
+          jdBuffer
+        );
 
       jdText =
         parsedJD.text || "";
@@ -78,117 +88,143 @@ export async function POST(req: Request) {
     }
 
     // =========================
-    // AI ANALYSIS
+    // LOWERCASE
     // =========================
 
-    const completion =
-      await client.chat.completions.create({
+    const lowerResume =
+      resumeText.toLowerCase();
 
-        model:
-          "llama-3.1-8b-instant",
-
-        temperature: 0.4,
-
-        messages: [
-
-          {
-            role: "system",
-
-            content: `
-You are an advanced ATS scanner and recruiter.
-
-Analyze:
-- resume quality
-- ATS compatibility
-- recruiter readability
-- technical skills
-- missing skills
-- projects
-- strengths
-- weak areas
-
-Provide professional suggestions.
-`,
-          },
-
-          {
-            role: "user",
-
-            content: `
-RESUME:
-
-${resumeText}
-
-JOB DESCRIPTION:
-
-${jdText}
-`,
-          },
-        ],
-      });
-
-    const aiFeedback =
-      completion.choices[0]
-        .message.content || "";
+    const lowerJD =
+      jdText.toLowerCase();
 
     // =========================
-    // KEYWORD MATCHING
+    // KEYWORDS
     // =========================
 
-    const resumeWords =
-      resumeText
-        .toLowerCase()
-        .split(/\W+/);
+    const importantKeywords = [
 
-    const jdWords =
-      jdText
-        .toLowerCase()
-        .split(/\W+/);
+      // Languages
 
-    // Remove duplicates
+      "python",
+      "java",
+      "javascript",
+      "typescript",
+      "c++",
+      "sql",
 
-    const uniqueResumeWords =
-      [...new Set(resumeWords)];
+      // AI / ML
 
-    const uniqueJDWords =
-      [...new Set(jdWords)];
+      "machine learning",
+      "deep learning",
+      "nlp",
+      "bert",
+      "tensorflow",
+      "pytorch",
+      "llm",
+      "langchain",
+      "rag",
+      "vector",
 
-    // Filter important words
+      // Web
 
-    const filteredJDWords =
-      uniqueJDWords.filter(
+      "react",
+      "nextjs",
+      "node",
+      "express",
+      "api",
+      "rest api",
 
-        (word) =>
+      // Databases
 
-          word.length > 3
-      );
+      "mysql",
+      "mongodb",
+      "postgresql",
 
-    // Find matches
+      // Cloud
 
-    const matchedKeywords =
-      filteredJDWords.filter(
+      "aws",
+      "docker",
+      "kubernetes",
 
-        (word) =>
+      // Concepts
 
-          uniqueResumeWords.includes(word)
-      );
+      "data structures",
+      "algorithms",
+      "problem solving",
+      "system design",
+
+      // Resume Sections
+
+      "project",
+      "experience",
+      "skills",
+      "education",
+    ];
+
+    // =========================
+    // MATCHING
+    // =========================
+
+    let matchedKeywords = 0;
+
+    let missingKeywords: string[] = [];
+
+    importantKeywords.forEach(
+
+      (keyword) => {
+
+        const inJD =
+          lowerJD.includes(
+            keyword
+          );
+
+        const inResume =
+          lowerResume.includes(
+            keyword
+          );
+
+        if (
+          inJD &&
+          inResume
+        ) {
+
+          matchedKeywords++;
+
+        } else if (
+          inJD &&
+          !inResume
+        ) {
+
+          missingKeywords.push(
+            keyword
+          );
+        }
+      }
+    );
 
     // =========================
     // JOB MATCH
     // =========================
 
-    const jobMatch =
-      jdText.length > 0
+    const totalJDKeywords =
+      importantKeywords.filter(
+
+        (keyword) =>
+
+          lowerJD.includes(
+            keyword
+          )
+      ).length;
+
+    let jobMatch =
+      totalJDKeywords > 0
 
         ? Math.round(
 
             (
-              matchedKeywords.length /
+              matchedKeywords /
 
-              Math.max(
-                filteredJDWords.length,
-                1
-              )
+              totalJDKeywords
             ) * 100
           )
 
@@ -201,39 +237,115 @@ ${jdText}
     let atsScore =
       jobMatch;
 
+    // =========================
     // BONUS POINTS
+    // =========================
+
+    const bonusKeywords = [
+
+      "project",
+      "experience",
+      "skills",
+      "education",
+      "achievement",
+      "internship",
+      "certification",
+    ];
+
+    bonusKeywords.forEach(
+
+      (word) => {
+
+        if (
+          lowerResume.includes(
+            word
+          )
+        ) {
+
+          atsScore += 3;
+        }
+      }
+    );
+
+    // =========================
+    // AI/ML BONUS
+    // =========================
+
+    const aiKeywords = [
+
+      "bert",
+      "nlp",
+      "tensorflow",
+      "pytorch",
+      "machine learning",
+      "deep learning",
+    ];
+
+    aiKeywords.forEach(
+
+      (word) => {
+
+        if (
+          lowerResume.includes(
+            word
+          )
+        ) {
+
+          atsScore += 2;
+        }
+      }
+    );
+
+    // =========================
+    // PENALTIES
+    // =========================
 
     if (
-      resumeText
-        .toLowerCase()
-        .includes("project")
+      !lowerResume.includes(
+        "project"
+      )
     ) {
 
-      atsScore += 5;
+      atsScore -= 10;
     }
 
     if (
-      resumeText
-        .toLowerCase()
-        .includes("experience")
+      !lowerResume.includes(
+        "skills"
+      )
     ) {
 
-      atsScore += 5;
+      atsScore -= 10;
     }
 
     if (
-      resumeText
-        .toLowerCase()
-        .includes("skills")
+      resumeText.length < 1200
     ) {
 
-      atsScore += 5;
+      atsScore -= 10;
     }
 
-    // LIMIT SCORE
+    // =========================
+    // LIMITS
+    // =========================
 
     atsScore =
-      Math.min(100, atsScore);
+      Math.max(
+        20,
+        Math.min(
+          atsScore,
+          100
+        )
+      );
+
+    jobMatch =
+      Math.max(
+        0,
+        Math.min(
+          jobMatch,
+          100
+        )
+      );
 
     // =========================
     // RESUME LEVEL
@@ -258,6 +370,66 @@ ${jdText}
     }
 
     // =========================
+    // AI ANALYSIS
+    // =========================
+
+    const completion =
+      await client.chat.completions.create({
+
+        model:
+          "llama-3.1-8b-instant",
+
+        temperature: 0.4,
+
+        messages: [
+
+          {
+            role: "system",
+
+            content: `
+You are an expert ATS scanner and recruiter.
+
+Analyze:
+- ATS optimization
+- technical skills
+- recruiter readability
+- missing skills
+- project quality
+- resume structure
+- improvements
+
+Provide:
+- strengths
+- weaknesses
+- detailed suggestions
+`,
+          },
+
+          {
+            role: "user",
+
+            content: `
+RESUME:
+
+${resumeText}
+
+JOB DESCRIPTION:
+
+${jdText}
+
+MISSING KEYWORDS:
+
+${missingKeywords.join(", ")}
+`,
+          },
+        ],
+      });
+
+    const aiFeedback =
+      completion.choices[0]
+        .message.content || "";
+
+    // =========================
     // RESPONSE
     // =========================
 
@@ -268,6 +440,10 @@ ${jdText}
       jobMatch,
 
       resumeLevel,
+
+      matchedKeywords,
+
+      missingKeywords,
 
       aiFeedback,
     });
@@ -280,7 +456,9 @@ ${jdText}
 
       error:
         error instanceof Error
+
           ? error.message
+
           : "Analyze failed",
     });
   }
