@@ -279,6 +279,25 @@ export async function POST(req: Request) {
     }
 
     // =========================
+    // SCORING EXPLANATION
+    // =========================
+
+    const scoreBreakdown = [
+
+      `Matched Skills: ${matchedSkills.length}`,
+
+      `Missing Skills: ${missingSkills.length}`,
+
+      `Resume Sections Score: ${sectionScore}`,
+
+      `Project Quality Score: ${projectScore}`,
+
+      `Final ATS Score: ${atsScore}%`,
+
+      `Job Match Score: ${jobMatch}%`,
+    ];
+
+    // =========================
     // AI ANALYSIS
     // =========================
 
@@ -352,6 +371,8 @@ ${missingSkills.join(", ")}
       matchedSkills,
 
       missingSkills,
+
+      scoreBreakdown,
 
       aiFeedback,
     });

@@ -38,6 +38,9 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] =
     useState("suggestions");
 
+  const [scoreBreakdown, setScoreBreakdown] =
+    useState<string[]>([]);
+
   // =========================
   // ANALYZE RESUME
   // =========================
@@ -121,7 +124,9 @@ export default function DashboardPage() {
           "No suggestions generated"
         );
 
-        // OPEN AI SECTION
+        setScoreBreakdown(
+          data.scoreBreakdown || []
+        );
 
         setActiveSection(
           "suggestions"
@@ -428,6 +433,30 @@ export default function DashboardPage() {
           <div className="text-5xl text-yellow-400 font-bold">
             {resumeLevel}
           </div>
+        </div>
+      </div>
+
+      {/* SCORING EXPLANATION */}
+
+      <div className="bg-[#0f172a] rounded-3xl p-8 mb-8">
+
+        <h2 className="text-3xl text-cyan-400 mb-6">
+          Scoring Explanation
+        </h2>
+
+        <div className="space-y-4">
+
+          {scoreBreakdown.map(
+            (item, index) => (
+
+              <div
+                key={index}
+                className="bg-[#020617] p-4 rounded-xl text-lg text-gray-300"
+              >
+                {item}
+              </div>
+            )
+          )}
         </div>
       </div>
 
