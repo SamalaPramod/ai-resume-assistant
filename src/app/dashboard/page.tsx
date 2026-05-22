@@ -16,7 +16,7 @@ export default function DashboardPage() {
   // =========================
 
   const [resumeFile, setResumeFile] =
-    useState<File | null>(null);ajefkjnjjffb fj j ebfefefejefiej
+    useState<File | null>(null);
 
   const [jdFile, setJdFile] =
     useState<File | null>(null);
