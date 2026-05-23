@@ -42,6 +42,9 @@ export default function DashboardPage() {
   const [interviewQuestions, setInterviewQuestions] =
     useState("");
 
+  const [roadmap, setRoadmap] =
+    useState("");
+
   const [activeSection, setActiveSection] =
     useState("suggestions");
 
@@ -294,6 +297,48 @@ export default function DashboardPage() {
       }
     };
 
+
+
+  // =========================
+  // ROADMAP
+  // =========================
+
+  const generateRoadmap =
+    async () => {
+
+      try {
+
+        if (!resumeFile || !jdFile) {
+          alert("Upload Resume + JD");
+          return;
+        }
+
+        setLoading(true);
+
+        const formData = new FormData();
+
+        formData.append("resume",resumeFile);
+        formData.append("jdFile",jdFile);
+
+        const response = await fetch("/api/roadmap",{
+          method:"POST",
+          body:formData,
+        });
+
+        const data = await response.json();
+
+        setRoadmap(data.roadmap || "No roadmap generated");
+
+        setActiveSection("roadmap");
+
+      } catch(error){
+        console.log(error);
+        alert("Roadmap failed");
+      } finally{
+        setLoading(false);
+      }
+    };
+
   // =========================
   // DOWNLOAD HELPERS
   // =========================
@@ -413,6 +458,14 @@ export default function DashboardPage() {
             className="bg-orange-500 hover:bg-orange-600 px-8 py-4 rounded-2xl text-xl font-semibold"
           >
             Interview Prep
+          </button>
+
+          <button
+            onClick={generateRoadmap}
+            disabled={loading}
+            className="bg-purple-500 hover:bg-purple-600 px-8 py-4 rounded-2xl text-xl font-semibold"
+          >
+            Skill Gap Roadmap
           </button>
         </div>
 
@@ -620,6 +673,22 @@ export default function DashboardPage() {
         >
           Interview Prep
         </button>
+
+        <button
+          onClick={() =>
+            setActiveSection(
+              "roadmap"
+            )
+          }
+          className={`px-8 py-4 rounded-2xl text-xl font-semibold ${
+            activeSection ===
+            "roadmap"
+              ? "bg-purple-500"
+              : "bg-[#0f172a]"
+          }`}
+        >
+          Roadmap
+        </button>
       </div>
 
       {/* CONTENT */}
@@ -712,7 +781,36 @@ export default function DashboardPage() {
             </button>
           </div>
         )}
-      </div>
+      
+
+        {activeSection ===
+          "roadmap" && (
+
+          <div>
+
+            <h2 className="text-5xl text-purple-400 mb-10">
+              Skill Gap Roadmap
+            </h2>
+
+            <div className="bg-[#020617] rounded-3xl p-8 whitespace-pre-wrap leading-9 text-lg text-gray-300">
+              {roadmap}
+            </div>
+
+            <button
+              onClick={() =>
+                downloadTextFile(
+                  roadmap,
+                  "skill_gap_roadmap.txt"
+                )
+              }
+              className="mt-6 bg-purple-500 hover:bg-purple-600 px-6 py-3 rounded-xl"
+            >
+              Download Roadmap
+            </button>
+
+          </div>
+        )}
+</div>
     </div>
   );
 }
