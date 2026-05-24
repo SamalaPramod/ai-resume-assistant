@@ -31,7 +31,7 @@ export default function DashboardPage() {
     useState(0);
 
   const [resumeLevel, setResumeLevel] =
-    useState("Beginner");
+    useState("Not Analyzed");
 
   const [aiSuggestions, setAiSuggestions] =
     useState("");
@@ -40,6 +40,12 @@ export default function DashboardPage() {
     useState("");
 
   const [interviewQuestions, setInterviewQuestions] =
+    useState("");
+
+  const [userAnswer, setUserAnswer] =
+    useState("");
+
+  const [answerFeedback, setAnswerFeedback] =
     useState("");
 
   const [roadmap, setRoadmap] =
@@ -231,6 +237,92 @@ export default function DashboardPage() {
   const generateInterviewQuestions =
     async () => {
 
+      const evaluateAnswer=
+
+async()=>{
+
+try{
+
+if(
+
+!userAnswer
+
+){
+
+alert(
+
+"Write answer"
+
+);
+
+return;
+
+}
+
+const response=
+
+await fetch(
+
+"/api/evaluate-answer",
+
+{
+
+method:"POST",
+
+headers:{
+
+"Content-Type":
+
+"application/json"
+
+},
+
+body:
+
+JSON.stringify({
+
+question:
+
+interviewQuestions,
+
+answer:
+
+userAnswer
+
+})
+
+}
+
+);
+
+const data=
+
+await response.json();
+
+setAnswerFeedback(
+
+data.feedback||
+
+"No feedback"
+
+);
+
+}
+
+catch(error){
+
+console.log(error);
+
+alert(
+
+"Evaluation failed"
+
+);
+
+}
+
+};
+
       try {
 
         if (!resumeFile) {
@@ -400,11 +492,20 @@ export default function DashboardPage() {
             <input
               type="file"
               accept="application/pdf"
-              onChange={(e) =>
-                setResumeFile(
-                  e.target.files?.[0] || null
-                )
-              }
+              onChange={(e) => {
+              setResumeFile(
+
+               e.target.files?.[0] || null
+
+              );
+
+              setResumeLevel(
+
+              "Not Analyzed"
+
+              );
+
+              }}
               className="bg-white text-black w-full p-4 rounded-xl"
             />
           </div>
@@ -540,7 +641,12 @@ export default function DashboardPage() {
           </h2>
 
           <div className="text-5xl text-yellow-400 font-bold">
-            {resumeLevel}
+            {
+            
+              resumeLevel ||
+              
+              "Not Analyzed"
+            }
           </div>
         </div>
       </div>
