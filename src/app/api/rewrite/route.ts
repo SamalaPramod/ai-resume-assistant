@@ -47,7 +47,7 @@ export async function POST(req: Request) {
       await client.chat.completions.create({
 
         model:
-          "llama-3.1-8b-instant",
+          "llama-3.3-70b-versatile",
 
         temperature: 0.4,
 
